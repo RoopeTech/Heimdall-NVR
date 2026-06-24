@@ -142,6 +142,10 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [rtspPass, setRtspPass] = useState('');
   const [osdEnabled, setOsdEnabled] = useState(true);
 
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [updatingState, setUpdatingState] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -175,6 +179,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       }
     };
     fetchSysSettings();
+    if (activeTab === 'system') {
+      fetchUpdateStatus();
+    }
   }, [activeTab]);
 
   const handleSaveSystemSettings = async (e) => {
@@ -281,6 +288,55 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       }
     };
     reader.readAsText(file);
+    }
+  };
+
+  const fetchUpdateStatus = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await fetch('/api/settings/check_update', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateStatus(data);
+      }
+    } catch (e) {
+      console.error('Error checking updates:', e);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleApplyUpdate = async () => {
+    if (!confirm('Are you sure you want to apply this update? The system will pull new code, compile assets, and restart the NVR backend. This will temporarily disrupt live viewing for about 10-15 seconds.')) {
+      return;
+    }
+    
+    setUpdatingState('updating');
+    setError('');
+    setSuccess('');
+    
+    try {
+      const res = await fetch('/api/settings/apply_update', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUpdatingState('success');
+        setSuccess('Update applied successfully! Restarting server...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 12000);
+      } else {
+        const data = await res.json();
+        setUpdatingState('error');
+        setError(data.detail || 'Failed to apply update.');
+      }
+    } catch (err) {
+      setUpdatingState('error');
+      setError('Network error applying system update.');
+    }
   };
 
   const handleDuplicate = (cam) => {
@@ -559,6 +615,69 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
+
+            <div style={{ height: '1px', background: 'var(--border-light)', margin: '30px 0' }} />
+
+            <h3 style={{ fontSize: '18px', marginBottom: '12px', color: 'var(--primary)' }}>System Updates</h3>
+            {checkingUpdate ? (
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Checking for updates...</p>
+            ) : updateStatus ? (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '20px', fontSize: '13px', marginBottom: '12px' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Current Version: </span>
+                    <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--primary)' }}>
+                      {updateStatus.local_commit}
+                    </code>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-secondary)' }}>Latest Version: </span>
+                    <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: updateStatus.update_available ? 'var(--accent-motion)' : 'var(--accent-success)' }}>
+                      {updateStatus.remote_commit}
+                    </code>
+                  </div>
+                </div>
+
+                {updateStatus.update_available ? (
+                  <div>
+                    <div style={{ padding: '10px 14px', background: 'rgba(0, 242, 254, 0.08)', border: '1px solid var(--primary)', borderRadius: '8px', color: 'var(--primary)', fontSize: '13px', marginBottom: '16px' }}>
+                      🚀 A new software update is available! Click below to pull updates and compile assets.
+                    </div>
+                    {updatingState === 'updating' ? (
+                      <div style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '13px' }}>
+                        ⏳ Applying updates and recompiling static UI assets... The server is restarting. Please wait 12s...
+                      </div>
+                    ) : updatingState === 'success' ? (
+                      <div style={{ color: 'var(--accent-success)', fontWeight: '600', fontSize: '13px' }}>
+                        ✅ Update successful! Reloading dashboard...
+                      </div>
+                    ) : (
+                      <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        onClick={handleApplyUpdate}
+                        disabled={loading}
+                      >
+                        🚀 Apply System Update
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '13px', color: 'var(--accent-success)', fontWeight: '500' }}>
+                    ✔ Your NVR software is fully up to date.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={fetchUpdateStatus}
+                disabled={checkingUpdate}
+              >
+                🔄 Check for Updates
+              </button>
+            )}
 
             <div style={{ height: '1px', background: 'var(--border-light)', margin: '30px 0' }} />
 

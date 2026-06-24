@@ -252,6 +252,61 @@ def restore_settings(data: dict, admin: dict = Depends(require_admin)):
     camera_manager.manager.start_all()
     return {"success": True}
 
+@app.get("/api/settings/check_update")
+def check_update(current_user: dict = Depends(get_current_user)):
+    import subprocess
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        # Run git fetch origin to update remote references
+        subprocess.run(["git", "fetch", "origin"], cwd=project_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+        # Get local commit hash
+        local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=project_root, text=True).strip()
+        # Get remote master commit hash
+        remote_commit = subprocess.check_output(["git", "rev-parse", "origin/master"], cwd=project_root, text=True).strip()
+        
+        return {
+            "update_available": local_commit != remote_commit,
+            "local_commit": local_commit[:7],
+            "remote_commit": remote_commit[:7]
+        }
+    except Exception as e:
+        return {
+            "update_available": False,
+            "local_commit": "unknown",
+            "remote_commit": "unknown",
+            "error": str(e)
+        }
+
+@app.post("/api/settings/apply_update")
+def apply_update(admin: dict = Depends(require_admin)):
+    import subprocess
+    import signal
+    import time
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        # 1. Pull latest code from remote master branch
+        pull_res = subprocess.run(["git", "pull", "origin", "master"], cwd=project_root, capture_output=True, text=True, timeout=20)
+        if pull_res.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Git pull failed: {pull_res.stderr}")
+            
+        # 2. Recompile frontend static bundle in the background
+        frontend_dir = os.path.join(project_root, "frontend")
+        npm_cmd = "npm.cmd" if os.name == 'nt' else "npm"
+        subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=40)
+        
+        # 3. Schedule server process termination in 1.5 seconds.
+        # Running under systemd (with Restart=always) or a wrapper daemon will restart it automatically.
+        def restart_server():
+            time.sleep(1.5)
+            print("[Update] Terminating NVR process to trigger restart...")
+            os.kill(os.getpid(), signal.SIGTERM)
+            
+        threading.Thread(target=restart_server, daemon=True).start()
+        
+        return {"success": True, "message": "Update pulled and compiled successfully. Server is restarting..."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Authentication APIs
 @app.post("/api/auth/login")
 def login(data: dict, response: Response):

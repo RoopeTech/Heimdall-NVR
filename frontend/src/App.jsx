@@ -19,6 +19,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   
   // Change Password form states
   const [currPwd, setCurrPwd] = useState('');
@@ -89,6 +90,21 @@ export default function App() {
     }
   };
 
+  const checkUpdateStatus = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/settings/check_update', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateAvailable(data.update_available);
+      }
+    } catch (e) {
+      console.error('Error checking updates:', e);
+    }
+  };
+
   // Verify token session on startup
   useEffect(() => {
     const initSession = async () => {
@@ -121,6 +137,7 @@ export default function App() {
     fetchCameras();
     fetchRecordings();
     fetchEvents();
+    checkUpdateStatus();
 
     const interval = setInterval(() => {
       fetchRecordings();
@@ -253,6 +270,41 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {updateAvailable && (
+        <div style={{
+          background: 'var(--primary)',
+          color: '#000',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '13px',
+          fontWeight: '600',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 12px rgba(0, 242, 254, 0.2)',
+          zIndex: 1000,
+        }}>
+          🚀 System update available! New commits are ready in your repository. 
+          <button 
+            onClick={() => setActiveTab('settings')} 
+            style={{
+              background: '#fff',
+              color: '#000',
+              border: 'none',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              marginLeft: '10px',
+              fontSize: '11px'
+            }}
+          >
+            Go to Updates
+          </button>
+        </div>
+      )}
+
       {user.default_password_warning && (
         <div style={{
           background: 'var(--accent-warning)',
