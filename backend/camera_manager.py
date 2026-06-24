@@ -16,8 +16,9 @@ class MockCapture:
     """
     Generates a simulated camera feed that reacts to PTZ and simulates motion.
     """
-    def __init__(self, name="Mock Camera"):
+    def __init__(self, name="Mock Camera", osd_enabled=True):
         self.name = name
+        self.osd_enabled = osd_enabled
         self.width = 1280
         self.height = 720
         
@@ -145,9 +146,10 @@ class MockCapture:
         frame = cv2.resize(viewport, (self.width, self.height))
         
         # Draw camera HUD
-        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-        cv2.putText(frame, f"{self.name} | LIVE", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.putText(frame, time_str, (self.width - 320, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        if self.osd_enabled:
+            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            cv2.putText(frame, f"{self.name} | LIVE", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            cv2.putText(frame, time_str, (self.width - 320, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
         ptz_info = f"P: {self.pan:.2f} T: {self.tilt:.2f} Z: {self.zoom:.2f}"
         cv2.putText(frame, ptz_info, (20, self.height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
@@ -183,6 +185,7 @@ class CameraThread(threading.Thread):
         self.record_mode = camera_info.get('record_mode', 'motion')
         self.rtsp_user = camera_info.get('rtsp_user')
         self.rtsp_pass = camera_info.get('rtsp_pass')
+        self.osd_enabled = camera_info.get('osd_enabled', 1) == 1
         
         # Motion detection settings
         self.motion_enabled = camera_info.get('motion_enabled', 1) == 1
@@ -226,7 +229,7 @@ class CameraThread(threading.Thread):
     def run(self):
         while self.running:
             if self.is_mock:
-                self.mock_cap = MockCapture(self.name)
+                self.mock_cap = MockCapture(self.name, osd_enabled=self.osd_enabled)
                 cap = self.mock_cap
             else:
                 # Open sub-stream for live view & motion detection
@@ -325,6 +328,23 @@ class CameraThread(threading.Thread):
                         # Draw motion indicator
                         cv2.circle(display_frame, (30, 70), 10, (0, 0, 255), -1)
                         cv2.putText(display_frame, "MOTION DETECTED", (50, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                        
+                # Draw OSD date/time overlay if enabled and it's a real camera (mock camera draws its own HUD)
+                if not self.is_mock and self.osd_enabled:
+                    h, w = display_frame.shape[:2]
+                    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # 1. Camera Name on top-left
+                    name_str = f"{self.name} | LIVE"
+                    name_size = cv2.getTextSize(name_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                    cv2.rectangle(display_frame, (10, 15), (20 + name_size[0], 45), (0, 0, 0), -1)
+                    cv2.putText(display_frame, name_str, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                    
+                    # 2. Timestamp on top-right
+                    time_size = cv2.getTextSize(time_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                    text_x = w - time_size[0] - 20
+                    cv2.rectangle(display_frame, (text_x - 10, 15), (w - 10, 45), (0, 0, 0), -1)
+                    cv2.putText(display_frame, time_str, (text_x, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
                         
                 self.latest_stream_frame = display_frame
                 

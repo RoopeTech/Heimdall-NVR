@@ -139,6 +139,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [recordMode, setRecordMode] = useState('motion');
   const [rtspUser, setRtspUser] = useState('');
   const [rtspPass, setRtspPass] = useState('');
+  const [osdEnabled, setOsdEnabled] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -220,6 +221,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRecordMode(cam.record_mode || 'motion');
     setRtspUser(cam.rtsp_user || '');
     setRtspPass(cam.rtsp_pass || '');
+    setOsdEnabled(cam.osd_enabled !== 0);
     setActiveTab('form');
   };
 
@@ -241,6 +243,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRecordMode(cam.record_mode || 'motion');
     setRtspUser(cam.rtsp_user || '');
     setRtspPass(cam.rtsp_pass || '');
+    setOsdEnabled(cam.osd_enabled !== 0);
     setActiveTab('form');
   };
 
@@ -262,6 +265,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRecordMode('motion');
     setRtspUser('');
     setRtspPass('');
+    setOsdEnabled(true);
   };
 
   const handleCreateNew = () => {
@@ -291,6 +295,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       record_mode: recordMode,
       rtsp_user: rtspUser || null,
       rtsp_pass: rtspPass || null,
+      osd_enabled: osdEnabled ? 1 : 0,
     };
 
     try {
@@ -628,6 +633,21 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   Masked password input to prevent plain-text exposure in your browser window.
+                </span>
+              </div>
+
+              <div className="form-group" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', margin: '5px 0 10px 0' }}>
+                <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={osdEnabled} 
+                    onChange={(e) => setOsdEnabled(e.target.checked)} 
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                  />
+                  <span>Overlay Time and Date (OSD) on Live Feed</span>
+                </label>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '28px' }}>
+                  Overlay the camera name and current timestamp onto the live stream.
                 </span>
               </div>
 
