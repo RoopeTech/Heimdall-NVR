@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function PTZControls({ cameraId, isMock }) {
+export default function PTZControls({ cameraId, isMock, token }) {
   const [activeDir, setActiveDir] = useState(null);
   const [zoom, setZoom] = useState(1.0);
   const [pan, setPan] = useState(0.0);
@@ -10,7 +10,10 @@ export default function PTZControls({ cameraId, isMock }) {
     try {
       await fetch(`/api/cameras/${cameraId}/ptz`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ action, pan: p, tilt: t, zoom: z }),
       });
     } catch (err) {

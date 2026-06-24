@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException, Response, Query
+from fastapi import FastAPI, HTTPException, Response, Query, Depends, Request, Cookie, Header
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,9 +8,39 @@ import threading
 import webbrowser
 import time
 from datetime import datetime
+from typing import Optional
 
 import database
 import camera_manager
+
+# Authentication Dependencies
+def get_current_user(
+    request: Request,
+    token: Optional[str] = Query(None),
+    authorization: Optional[str] = Header(None),
+    session_token: Optional[str] = Cookie(None)
+):
+    actual_token = token
+    if not actual_token and authorization:
+        if authorization.startswith("Bearer "):
+            actual_token = authorization[7:]
+    if not actual_token and session_token:
+        actual_token = session_token
+        
+    if not actual_token:
+        raise HTTPException(status_code=401, detail="Authentication token missing")
+        
+    user = database.get_session_user(actual_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session token")
+        
+    user["token"] = actual_token
+    return user
+
+def require_admin(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 app = FastAPI(title="Antigravity NVR API")
 
@@ -36,7 +66,7 @@ def shutdown_event():
 
 # Live Video Stream (MJPEG)
 @app.get("/api/cameras/{camera_id}/live")
-def get_live_stream(camera_id: int, raw: bool = False):
+def get_live_stream(camera_id: int, raw: bool = False, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
@@ -61,7 +91,7 @@ def get_live_stream(camera_id: int, raw: bool = False):
 
 # PTZ Control Endpoint
 @app.post("/api/cameras/{camera_id}/ptz")
-def ptz_control(camera_id: int, data: dict):
+def ptz_control(camera_id: int, data: dict, current_user: dict = Depends(get_current_user)):
     # data: { action: "move"|"stop", pan: -1..1, tilt: -1..1, zoom: 1..3 }
     action = data.get("action")
     pan = float(data.get("pan", 0.0))
@@ -73,18 +103,18 @@ def ptz_control(camera_id: int, data: dict):
 
 # Toggle Mock Motion Simulation
 @app.post("/api/cameras/{camera_id}/mock_motion")
-def toggle_mock_motion(camera_id: int, data: dict):
+def toggle_mock_motion(camera_id: int, data: dict, admin: dict = Depends(require_admin)):
     enabled = bool(data.get("enabled", True))
     success = camera_manager.manager.set_mock_motion(camera_id, enabled)
     return {"success": success}
 
 # Camera CRUD API
 @app.get("/api/cameras")
-def list_cameras():
+def list_cameras(current_user: dict = Depends(get_current_user)):
     return database.get_cameras()
 
 @app.get("/api/cameras/{camera_id}")
-def get_camera(camera_id: int):
+def get_camera(camera_id: int, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
@@ -138,7 +168,7 @@ def process_camera_data(data: dict):
     return data
 
 @app.post("/api/cameras")
-def add_camera(data: dict):
+def add_camera(data: dict, admin: dict = Depends(require_admin)):
     # Validate required fields
     required = ["name", "main_url", "sub_url"]
     for r in required:
@@ -151,7 +181,7 @@ def add_camera(data: dict):
     return {"id": cid, "message": "Camera added"}
 
 @app.put("/api/cameras/{camera_id}")
-def update_camera(camera_id: int, data: dict):
+def update_camera(camera_id: int, data: dict, admin: dict = Depends(require_admin)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
@@ -162,7 +192,7 @@ def update_camera(camera_id: int, data: dict):
     return {"message": "Camera updated"}
 
 @app.delete("/api/cameras/{camera_id}")
-def delete_camera(camera_id: int):
+def delete_camera(camera_id: int, admin: dict = Depends(require_admin)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
@@ -175,12 +205,13 @@ def delete_camera(camera_id: int):
 @app.get("/api/recordings")
 def list_recordings(
     camera_id: int = Query(None),
-    date: str = Query(None) # YYYY-MM-DD
+    date: str = Query(None), # YYYY-MM-DD
+    current_user: dict = Depends(get_current_user)
 ):
     return database.get_recordings(camera_id, date)
 
 @app.get("/api/recordings/play/{filename}")
-def play_recording(filename: str):
+def play_recording(filename: str, current_user: dict = Depends(get_current_user)):
     filepath = os.path.join(camera_manager.RECORDINGS_DIR, filename)
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Recording file not found")
@@ -188,20 +219,137 @@ def play_recording(filename: str):
 
 # Events API
 @app.get("/api/events")
-def list_events(camera_id: int = Query(None), limit: int = 100):
+def list_events(camera_id: int = Query(None), limit: int = 100, current_user: dict = Depends(get_current_user)):
     return database.get_events(camera_id, limit)
 
 # System Settings API
 @app.get("/api/settings")
-def get_system_settings():
+def get_system_settings(current_user: dict = Depends(get_current_user)):
     return {
         "app_title": database.get_system_setting("app_title") or "Antigravity NVR"
     }
 
 @app.post("/api/settings")
-def save_system_settings(data: dict):
+def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
     if "app_title" in data:
         database.set_system_setting("app_title", data["app_title"])
+    return {"success": True}
+
+# Authentication APIs
+@app.post("/api/auth/login")
+def login(data: dict, response: Response):
+    username = data.get("username")
+    password = data.get("password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password required")
+        
+    user = database.get_user_by_username(username)
+    if not user or not database.verify_password(password, user["salt"], user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Invalid username or password")
+        
+    import secrets
+    from datetime import timedelta
+    token = secrets.token_hex(32)
+    expiry = (datetime.now() + timedelta(days=30)).isoformat()
+    database.create_session(user["id"], token, expiry)
+    
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=2592000 # 30 days
+    )
+    
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "role": user["role"]
+        }
+    }
+
+@app.post("/api/auth/logout")
+def logout(response: Response, current_user: dict = Depends(get_current_user)):
+    token = current_user.get("token")
+    if token:
+        database.delete_session(token)
+    response.delete_cookie(key="session_token")
+    return {"success": True}
+
+@app.get("/api/auth/me")
+def get_me(current_user: dict = Depends(get_current_user)):
+    return {
+        "id": current_user["id"],
+        "username": current_user["username"],
+        "role": current_user["role"]
+    }
+
+@app.post("/api/auth/change_password")
+def change_password(data: dict, current_user: dict = Depends(get_current_user)):
+    current_pwd = data.get("current_password")
+    new_pwd = data.get("new_password")
+    if not current_pwd or not new_pwd:
+        raise HTTPException(status_code=400, detail="Current and new password required")
+        
+    user = database.get_user(current_user["id"])
+    if not user or not database.verify_password(current_pwd, user["salt"], user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Invalid current password")
+        
+    database.update_user(user["id"], user["username"], user["role"], password=new_pwd)
+    return {"success": True}
+
+# User Management APIs (Admin-Only)
+@app.get("/api/users")
+def list_users(admin: dict = Depends(require_admin)):
+    return database.get_users()
+
+@app.post("/api/users")
+def add_user(data: dict, admin: dict = Depends(require_admin)):
+    username = data.get("username")
+    password = data.get("password")
+    role = data.get("role", "viewer")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password required")
+    if role not in ["admin", "viewer"]:
+        raise HTTPException(status_code=400, detail="Invalid role. Must be 'admin' or 'viewer'")
+        
+    existing = database.get_user_by_username(username)
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+        
+    uid = database.create_user(username, password, role)
+    if uid is None:
+        raise HTTPException(status_code=500, detail="Failed to create user")
+    return {"id": uid, "message": "User created successfully"}
+
+@app.put("/api/users/{user_id}")
+def update_user_route(user_id: int, data: dict, admin: dict = Depends(require_admin)):
+    username = data.get("username")
+    role = data.get("role")
+    password = data.get("password")
+    
+    if not username or not role:
+        raise HTTPException(status_code=400, detail="Username and role required")
+    if role not in ["admin", "viewer"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+        
+    if user_id == admin["id"] and role != "admin":
+        raise HTTPException(status_code=400, detail="Admins cannot change their own role")
+        
+    success = database.update_user(user_id, username, role, password=password)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"success": True}
+
+@app.delete("/api/users/{user_id}")
+def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="Admins cannot delete themselves")
+    success = database.delete_user(user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
     return {"success": True}
 
 # Serve Frontend static assets

@@ -1,9 +1,126 @@
 import React, { useState, useEffect } from 'react';
 
-export default function Settings({ cameras, onReload, onReloadSettings }) {
+export default function Settings({ cameras, onReload, onReloadSettings, token, currentUser }) {
   const [activeTab, setActiveTab] = useState('list');
   const [editingCamera, setEditingCamera] = useState(null);
   const [appTitleInput, setAppTitleInput] = useState('');
+
+  // User Management State
+  const [userList, setUserList] = useState([]);
+  const [userUsername, setUserUsername] = useState('');
+  const [userPassword, setUserPassword] = useState('');
+  const [userRole, setUserRole] = useState('viewer');
+  const [editingUser, setEditingUser] = useState(null);
+  const [showUserForm, setShowUserForm] = useState(false);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users' && currentUser?.role === 'admin') {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    const payload = {
+      username: userUsername,
+      role: userRole,
+    };
+    if (userPassword || !editingUser) {
+      payload.password = userPassword;
+    }
+
+    try {
+      const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
+      const method = editingUser ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        setSuccess(editingUser ? 'User account updated successfully!' : 'User account created successfully!');
+        setShowUserForm(false);
+        setEditingUser(null);
+        setUserUsername('');
+        setUserPassword('');
+        setUserRole('viewer');
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Failed to save user account.');
+      }
+    } catch (err) {
+      setError('Network error saving user account.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (id === currentUser.id) {
+      alert("You cannot delete your own admin account.");
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this user?')) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setSuccess('User deleted successfully.');
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Failed to delete user.');
+      }
+    } catch (err) {
+      setError('Network error deleting user.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setUserUsername(user.username);
+    setUserRole(user.role);
+    setUserPassword('');
+    setShowUserForm(true);
+  };
+
+  const handleCreateNewUser = () => {
+    setEditingUser(null);
+    setUserUsername('');
+    setUserRole('viewer');
+    setUserPassword('');
+    setShowUserForm(true);
+  };
   
   // Form State
   const [name, setName] = useState('');
@@ -40,9 +157,12 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
 
   // Load app title settings when settings loads or activeTab changes
   useEffect(() => {
+    if (!token) return;
     const fetchSysSettings = async () => {
       try {
-        const res = await fetch('/api/settings');
+        const res = await fetch('/api/settings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setAppTitleInput(data.app_title || '');
@@ -61,7 +181,10 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ app_title: appTitleInput }),
       });
       if (res.ok) {
@@ -176,7 +299,10 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -201,7 +327,10 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/cameras/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/cameras/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (response.ok) {
         setSuccess('Camera deleted successfully.');
         onReload();
@@ -236,6 +365,17 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
         >
           ⚙️ Branding Settings
         </button>
+        {currentUser?.role === 'admin' && (
+          <button 
+            className={`settings-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('users');
+              fetchUsers();
+            }}
+          >
+            👤 User Accounts
+          </button>
+        )}
         {activeTab === 'form' && editingCamera && (
           <button className="settings-nav-btn active">
             📝 Edit: {editingCamera.name}
@@ -319,6 +459,101 @@ export default function Settings({ cameras, onReload, onReloadSettings }) {
               </button>
             </div>
           </form>
+        ) : activeTab === 'users' && currentUser?.role === 'admin' ? (
+          <div>
+            {showUserForm ? (
+              <form onSubmit={handleSaveUser}>
+                <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>
+                  {editingUser ? `Configure User: ${editingUser.username}` : 'Add User Account'}
+                </h2>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Username</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={userUsername} 
+                      onChange={(e) => setUserUsername(e.target.value)} 
+                      placeholder="e.g. guard_room"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Role</label>
+                    <select 
+                      className="form-input" 
+                      value={userRole} 
+                      onChange={(e) => setUserRole(e.target.value)}
+                    >
+                      <option value="viewer">Viewer (Read-only)</option>
+                      <option value="admin">Admin (Full Access)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">
+                      {editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
+                    </label>
+                    <input 
+                      type="password" 
+                      className="form-input" 
+                      value={userPassword} 
+                      onChange={(e) => setUserPassword(e.target.value)} 
+                      placeholder="••••••••"
+                      required={!editingUser}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {loading ? 'Saving...' : editingUser ? 'Update Account' : 'Create Account'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowUserForm(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div>
+                <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>User Accounts</h2>
+                <div className="settings-cameras-list">
+                  {userList.map((usr) => (
+                    <div key={usr.id} className="settings-camera-item">
+                      <div>
+                        <h4 style={{ fontSize: '16px', fontWeight: '600' }}>
+                          👤 {usr.username} 
+                          {usr.id === currentUser?.id && <span style={{ fontSize: '11px', color: 'var(--primary)', marginLeft: '8px' }}>(You)</span>}
+                        </h4>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          Role: <span style={{ textTransform: 'uppercase', fontWeight: '600', color: usr.role === 'admin' ? 'var(--primary)' : 'var(--text-secondary)' }}>{usr.role}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="btn btn-secondary" onClick={() => handleEditUser(usr)}>
+                          Edit
+                        </button>
+                        {usr.id !== currentUser?.id ? (
+                          <button className="btn btn-danger" onClick={() => handleDeleteUser(usr.id)}>
+                            Delete
+                          </button>
+                        ) : (
+                          <button className="btn btn-secondary" disabled title="Cannot delete yourself" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-primary" onClick={handleCreateNewUser}>
+                  Add User Account
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <form onSubmit={handleSave}>
             <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>

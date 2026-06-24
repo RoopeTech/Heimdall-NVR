@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings }) {
+export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
   const [layout, setLayout] = useState('grid-layout-2'); // default 2x2 grid
 
   const getLayoutClass = () => {
@@ -19,7 +19,10 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
     try {
       await fetch(`/api/cameras/${camId}/mock_motion`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ enabled: !currentState })
       });
       onRefreshRecordings();
@@ -75,7 +78,7 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
               <div className="camera-stream-container">
                 <img 
                   className="camera-stream-img" 
-                  src={`/api/cameras/${cam.id}/live?t=${Date.now()}`}
+                  src={`/api/cameras/${cam.id}/live?t=${Date.now()}&token=${token}`}
                   alt={cam.name}
                   onError={(e) => {
                     e.target.style.display = 'none';

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Timeline from './Timeline';
 import PTZControls from './PTZControls';
 
-export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset }) {
+export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset, token }) {
   const [playbackMode, setPlaybackMode] = useState(false);
   const [activeRecording, setActiveRecording] = useState(null);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null);
@@ -169,7 +169,9 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch(`/api/events?camera_id=${camera.id}&limit=500`);
+      const res = await fetch(`/api/events?camera_id=${camera.id}&limit=500`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setCameraEvents(data);
@@ -199,7 +201,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
     // Save seek offset and src
     seekOffsetRef.current = offsetSeconds;
-    const srcUrl = `/api/recordings/play/${recording.filepath}`;
+    const srcUrl = `/api/recordings/play/${recording.filepath}?token=${token}`;
     setVideoSrc(srcUrl);
 
     // Seek the video player if already mounted and loaded
@@ -240,7 +242,10 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     try {
       const res = await fetch(`/api/cameras/${camera.id}/mock_motion`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ enabled: nextState })
       });
       if (res.ok) {
@@ -308,7 +313,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             {!playbackMode ? (
               <img 
                 className="camera-stream-img"
-                src={`/api/cameras/${camera.id}/live?t=${Date.now()}`}
+                src={`/api/cameras/${camera.id}/live?t=${Date.now()}&token=${token}`}
                 alt={camera.name}
                 style={transformStyle}
                 draggable={false}
@@ -349,7 +354,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
         {/* Right Side: PTZ Controls, Event Log, Mock Switch */}
         <div className="modal-body-right">
-          <PTZControls cameraId={camera.id} isMock={isMock} />
+          <PTZControls cameraId={camera.id} isMock={isMock} token={token} />
 
           {isMock && (
             <div className="glass-panel" style={{ padding: '16px', border: '1px dashed var(--border-glow)' }}>

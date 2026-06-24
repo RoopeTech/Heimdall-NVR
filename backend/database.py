@@ -1,6 +1,24 @@
 import sqlite3
 import os
+import hashlib
+import secrets
 from datetime import datetime
+
+# Password Hashing Helpers
+def hash_password(password: str, salt: str = None) -> tuple[str, str]:
+    if not salt:
+        salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac(
+        'sha256',
+        password.encode('utf-8'),
+        salt.encode('utf-8'),
+        100000
+    )
+    return key.hex(), salt
+
+def verify_password(password: str, salt: str, password_hash: str) -> bool:
+    h, _ = hash_password(password, salt)
+    return h == password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nvr.db")
 
@@ -91,7 +109,39 @@ def init_db():
     )
     """)
     
+    # Create users table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'viewer'
+    )
+    """)
+    
+    # Create sessions table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    """)
+    
     conn.commit()
+
+    # Seed default admin user
+    cursor.execute("SELECT COUNT(*) FROM users")
+    if cursor.fetchone()[0] == 0:
+        pwd_hash, salt = hash_password("admin")
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, salt, role) VALUES (?, ?, ?, ?)",
+            ("admin", pwd_hash, salt, "admin")
+        )
+        conn.commit()
 
     # Insert default settings
     cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = 'app_title'")
@@ -282,5 +332,110 @@ def set_system_setting(key, value):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
+
+# User CRUD Operations
+def create_user(username, password, role='viewer'):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    pwd_hash, salt = hash_password(password)
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, salt, role) VALUES (?, ?, ?, ?)",
+            (username, pwd_hash, salt, role)
+        )
+        user_id = cursor.lastrowid
+        conn.commit()
+    except sqlite3.IntegrityError:
+        user_id = None
+    finally:
+        conn.close()
+    return user_id
+
+def get_user_by_username(username):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_user(user_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_users():
+    conn = get_db_connection()
+    rows = conn.execute("SELECT id, username, role FROM users").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def update_user(user_id, username, role, password=None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if password:
+        pwd_hash, salt = hash_password(password)
+        cursor.execute(
+            "UPDATE users SET username = ?, role = ?, password_hash = ?, salt = ? WHERE id = ?",
+            (username, role, pwd_hash, salt, user_id)
+        )
+    else:
+        cursor.execute(
+            "UPDATE users SET username = ?, role = ? WHERE id = ?",
+            (username, role, user_id)
+        )
+    conn.commit()
+    count = cursor.rowcount
+    conn.close()
+    return count > 0
+
+def delete_user(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    count = cursor.rowcount
+    conn.close()
+    return count > 0
+
+# Session CRUD Operations
+def create_session(user_id, token, expires_at):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        (token, user_id, datetime.now().isoformat(), expires_at)
+    )
+    conn.commit()
+    conn.close()
+
+def get_session_user(token):
+    conn = get_db_connection()
+    now_str = datetime.now().isoformat()
+    row = conn.execute(
+        """
+        SELECT users.id, users.username, users.role 
+        FROM sessions 
+        JOIN users ON sessions.user_id = users.id 
+        WHERE sessions.token = ? AND sessions.expires_at > ?
+        """,
+        (token, now_str)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def delete_session(token):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+def clean_expired_sessions():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.now().isoformat()
+    cursor.execute("DELETE FROM sessions WHERE expires_at < ?", (now_str,))
     conn.commit()
     conn.close()
