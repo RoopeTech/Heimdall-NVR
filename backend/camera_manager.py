@@ -393,12 +393,14 @@ class CameraThread(threading.Thread):
         ffmpeg_cmd = local_ffmpeg if os.path.exists(local_ffmpeg) else "ffmpeg"
                 
         # Command: copy H264 stream without transcoding
+        # -movflags +faststart moves the index (moov atom) to the beginning for remote progressive streaming
         cmd = [
             ffmpeg_cmd, '-y',
             '-rtsp_transport', 'tcp',
             '-i', self.main_url,
             '-c', 'copy',
             '-an', # disable audio to avoid format mismatches
+            '-movflags', '+faststart',
             '-f', 'mp4',
             self.temp_filepath
         ]

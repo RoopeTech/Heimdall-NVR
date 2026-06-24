@@ -240,20 +240,29 @@
 }
 
 .modal-content {
-  width: 95%;
-  max-width: 1450px;
+  width: 90vw;
+  height: 85vh;
+  max-width: 95vw;
+  max-height: 95vh;
+  min-width: 800px;
+  min-height: 500px;
   display: grid;
   grid-template-columns: 2.2fr 1fr;
+  grid-template-rows: auto 1fr;
   gap: 24px;
   overflow: hidden;
-  max-height: 92vh;
+  resize: both;
+  position: relative;
 }
 
 @media (max-width: 850px) {
   .modal-content {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    height: 95vh;
     max-height: 95vh;
     overflow-y: auto;
+    resize: none;
   }
 }
 
@@ -277,6 +286,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-body-right {
@@ -285,6 +296,28 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Override stream/video styles inside detail modal to scale dynamically with resize */
+.modal-body-left .camera-stream-container {
+  padding-bottom: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.modal-body-left .camera-stream-img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 @media (max-width: 850px) {

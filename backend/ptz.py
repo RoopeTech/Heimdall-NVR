@@ -128,11 +128,12 @@ def send_onvif_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0, pr
         
     elif action == "home":
         body = f"""
-        <tptz:GotoHomePosition>
+        <tptz:GotoPreset>
             <tptz:ProfileToken>{profile}</tptz:ProfileToken>
-        </tptz:GotoHomePosition>
+            <tptz:PresetToken>1</tptz:PresetToken>
+        </tptz:GotoPreset>
         """
-        soap_action = "http://www.onvif.org/ver20/ptz/wsdl/GotoHomePosition"
+        soap_action = "http://www.onvif.org/ver20/ptz/wsdl/GotoPreset"
         
     else:
         raise ValueError(f"Unknown PTZ action: {action}")
@@ -195,7 +196,13 @@ def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0
             elif z > 1.1: cmd_str = "zoomIn"
             elif z < 0.9: cmd_str = "zoomOut"
         elif action == "home":
-            cmd_str = "goHome"
+            url = f"http://{ip}:{port}/cgi-bin/CGIProxy.fcgi?cmd=ptzGotoPreset&usr={username}&pwd={password}&presetName=1"
+            try:
+                res = requests.get(url, timeout=3)
+                return res.status_code == 200
+            except Exception as e:
+                print(f"Foscam HD PTZ Home Error: {e}")
+                return False
         elif action == "stop":
             cmd_str = "ptzStopRun"
             
@@ -230,6 +237,17 @@ def send_camhi_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0):
         elif z < 0.9: act = "zoomout"
     elif action == "stop":
         act = "stop"
+    elif action == "home":
+        # Go to preset 1 (Home)
+        url = f"http://{ip}:{port}/cgi-bin/hi3510/param.cgi?cmd=preset&-act=goto&-status=1&-number=1"
+        try:
+            from requests.auth import HTTPBasicAuth
+            # Attempt with basic auth (often required by CamHi firmware)
+            res = requests.get(url, auth=HTTPBasicAuth(username, password), timeout=3)
+            return res.status_code == 200
+        except Exception as e:
+            print(f"CamHi PTZ Home Error: {e}")
+            return False
         
     if act:
         url = f"http://{ip}:{port}/cgi-bin/hi3510/ptzctrl.cgi?-step=0&-act={act}&-speed=45"

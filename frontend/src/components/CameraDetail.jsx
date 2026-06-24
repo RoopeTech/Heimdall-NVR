@@ -104,7 +104,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content glass-panel glow-blue" style={{ height: '90vh' }}>
+      <div className="modal-content glass-panel glow-blue">
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div className={`camera-status-dot ${playbackMode ? '' : (camera.motion_enabled ? 'recording' : '')}`} />
