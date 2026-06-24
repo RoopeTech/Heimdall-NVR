@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-export default function Timeline({ recordings, selectedDate, onPlayRecording, currentPlaybackTime }) {
+export default function Timeline({ recordings, selectedDate, onPlayRecording, currentPlaybackTime, events }) {
   const trackRef = useRef(null);
 
   // Helper to convert ISO time to seconds from start of the selected day
@@ -141,6 +141,33 @@ export default function Timeline({ recordings, selectedDate, onPlayRecording, cu
                 width: `${Math.min(100 - leftPct, widthPct)}%`,
               }}
               title={`Recording: ${new Date(rec.start_time).toLocaleTimeString()} - ${rec.end_time ? new Date(rec.end_time).toLocaleTimeString() : 'Active'}`}
+            />
+          );
+        })}
+
+        {/* Motion event indicators */}
+        {events && events.filter(ev => ev.event_type === 'MOTION_START').map((ev) => {
+          const sec = getTimeInSecondsForDay(ev.timestamp);
+          const pct = (sec / 86400) * 100;
+          
+          if (pct < 0 || pct > 100) return null;
+          
+          return (
+            <div 
+              key={ev.id}
+              className="timeline-motion-marker"
+              style={{
+                left: `${pct}%`,
+                position: 'absolute',
+                top: '15px',
+                width: '3px',
+                height: '30px',
+                background: 'var(--accent-motion)',
+                boxShadow: '0 0 6px var(--accent-motion-glow)',
+                zIndex: 5,
+                pointerEvents: 'none'
+              }}
+              title={`Motion Alert: ${new Date(ev.timestamp).toLocaleTimeString()}`}
             />
           );
         })}

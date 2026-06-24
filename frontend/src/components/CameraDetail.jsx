@@ -169,7 +169,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch(`/api/events?camera_id=${camera.id}&limit=10`);
+      const res = await fetch(`/api/events?camera_id=${camera.id}&limit=500`);
       if (res.ok) {
         const data = await res.json();
         setCameraEvents(data);
@@ -338,11 +338,12 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
           </div>
 
-          <Timeline 
+           <Timeline 
             recordings={recordings.filter(r => r.camera_id === camera.id)}
             selectedDate={selectedDate}
             onPlayRecording={handlePlayRecording}
             currentPlaybackTime={playbackMode ? currentPlaybackTime : new Date()}
+            events={cameraEvents}
           />
         </div>
 

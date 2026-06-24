@@ -168,6 +168,7 @@ class CameraThread(threading.Thread):
         self.name = camera_info['name']
         self.main_url = camera_info['main_url']
         self.sub_url = camera_info['sub_url']
+        self.record_mode = camera_info.get('record_mode', 'motion')
         
         # Motion detection settings
         self.motion_enabled = camera_info.get('motion_enabled', 1) == 1
@@ -255,7 +256,8 @@ class CameraThread(threading.Thread):
                 # We throttle motion detection running to ~8 FPS (every 120ms) to save CPU,
                 # but we read frames continuously to avoid buffer latency.
                 now = time.time()
-                if self.motion_enabled and (now - last_motion_time >= 0.12):
+                run_motion = self.motion_enabled and (self.record_mode in ['motion', 'hybrid'])
+                if run_motion and (now - last_motion_time >= 0.12):
                     last_motion_time = now
                     
                     # 1. Resize for performance
@@ -311,6 +313,17 @@ class CameraThread(threading.Thread):
                         
                 self.latest_stream_frame = display_frame
                 
+                # Continuous / Hybrid segment splitting
+                if self.record_mode in ['always', 'hybrid']:
+                    if not self.is_recording:
+                        self._start_recording()
+                    else:
+                        elapsed = (datetime.now() - self.record_start_time).total_seconds()
+                        if elapsed >= 900: # 15 minutes
+                            print(f"[{self.name}] Segment completed ({elapsed:.1f}s). Rotating files...")
+                            self._stop_recording()
+                            self._start_recording()
+
                 # Write to recording file if recording
                 if self.is_recording:
                     if self.is_mock:
@@ -339,7 +352,7 @@ class CameraThread(threading.Thread):
             if not self.is_motion_detected:
                 self.is_motion_detected = True
                 database.log_event(self.camera_id, "MOTION_START", f"Motion detected on {self.name}")
-                if self.motion_enabled:
+                if self.motion_enabled and self.record_mode == 'motion':
                     self._start_recording()
         else:
             if self.is_motion_detected:
@@ -347,7 +360,8 @@ class CameraThread(threading.Thread):
                 if now - self.last_motion_time >= self.post_roll:
                     self.is_motion_detected = False
                     database.log_event(self.camera_id, "MOTION_END", f"Motion ended on {self.name}")
-                    self._stop_recording()
+                    if self.record_mode == 'motion':
+                        self._stop_recording()
 
     def _start_recording(self):
         if self.is_recording:

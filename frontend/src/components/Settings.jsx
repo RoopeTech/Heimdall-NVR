@@ -18,6 +18,7 @@ export default function Settings({ cameras, onReload }) {
   const [threshold, setThreshold] = useState(25);
   const [preRoll, setPreRoll] = useState(0);
   const [postRoll, setPostRoll] = useState(5);
+  const [recordMode, setRecordMode] = useState('motion');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +50,7 @@ export default function Settings({ cameras, onReload }) {
     setThreshold(cam.motion_threshold);
     setPreRoll(cam.pre_roll || 0);
     setPostRoll(cam.post_roll || 5);
+    setRecordMode(cam.record_mode || 'motion');
     setActiveTab('form');
   };
 
@@ -67,6 +69,7 @@ export default function Settings({ cameras, onReload }) {
     setThreshold(25);
     setPreRoll(0);
     setPostRoll(5);
+    setRecordMode('motion');
   };
 
   const handleCreateNew = () => {
@@ -93,6 +96,7 @@ export default function Settings({ cameras, onReload }) {
       motion_threshold: parseInt(threshold),
       pre_roll: parseInt(preRoll),
       post_roll: parseInt(postRoll),
+      record_mode: recordMode,
     };
 
     try {
@@ -332,17 +336,29 @@ export default function Settings({ cameras, onReload }) {
                 <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Motion Detection & NVR Recording</h3>
               </div>
 
-              <div className="form-group" style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input 
-                  type="checkbox" 
-                  id="motionEnabled" 
-                  checked={motionEnabled} 
-                  onChange={(e) => setMotionEnabled(e.target.checked)} 
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <label htmlFor="motionEnabled" style={{ fontWeight: '500', cursor: 'pointer' }}>
-                  Enable Motion Detection & Video Clip Recording
-                </label>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="form-label" style={{ fontWeight: '600' }}>NVR Recording Mode</label>
+                <select 
+                  className="form-input" 
+                  value={recordMode} 
+                  onChange={(e) => {
+                    const mode = e.target.value;
+                    setRecordMode(mode);
+                    if (mode === 'always') {
+                      setMotionEnabled(false);
+                    } else {
+                      setMotionEnabled(true);
+                    }
+                  }}
+                  style={{ width: '100%', height: '40px' }}
+                >
+                  <option value="motion">Motion Only (Record only on motion alerts)</option>
+                  <option value="always">Always Record (Continuous 24/7, disable motion detection)</option>
+                  <option value="hybrid">Hybrid (Continuous 24/7 + log motion events)</option>
+                </select>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Continuous recordings are automatically split into 15-minute segments for easy timeline scrubbing and playback.
+                </span>
               </div>
 
               {motionEnabled && (
