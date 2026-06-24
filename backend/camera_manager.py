@@ -226,21 +226,21 @@ class CameraThread(threading.Thread):
             # Reset motion background
             self.background_model = None
             
-            last_frame_time = time.time()
+            # Setup buffer size to 1 if it is a real camera (reduces lag)
+            if not self.is_mock:
+                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                
+            last_motion_time = time.time()
+            motion_boxes = []
+            motion_detected_this_frame = False
             
             while self.running:
-                # Limit frame rate of processing to 10 FPS to save CPU
-                now = time.time()
-                elapsed = now - last_frame_time
-                if elapsed < 0.1:
-                    time.sleep(0.1 - elapsed)
-                    
-                last_frame_time = time.time()
-                
+                # Read frames in a tight loop to drain the OpenCV buffer.
+                # cap.read() will block naturally matching the camera FPS.
                 ret, frame = cap.read()
                 if not ret:
                     if self.is_mock:
-                        time.sleep(0.1)
+                        time.sleep(0.05) # Mock capture frame rate throttling
                         continue
                     else:
                         print(f"[{self.name}] Stream connection lost. Reconnecting...")
@@ -252,10 +252,12 @@ class CameraThread(threading.Thread):
                 # Draw motion overlay if active
                 display_frame = frame.copy()
                 
-                # Run motion detection
-                motion_detected_this_frame = False
-                
-                if self.motion_enabled:
+                # We throttle motion detection running to ~8 FPS (every 120ms) to save CPU,
+                # but we read frames continuously to avoid buffer latency.
+                now = time.time()
+                if self.motion_enabled and (now - last_motion_time >= 0.12):
+                    last_motion_time = now
+                    
                     # 1. Resize for performance
                     resized = cv2.resize(frame, (320, 240))
                     # 2. Blur and grayscale
@@ -279,10 +281,10 @@ class CameraThread(threading.Thread):
                     contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     
                     # Map sensitivity to pixel area: Sensitivity 1 -> area 5000, 100 -> area 50
-                    # formula: min_area = 5000 - (sensitivity * 49.5)
                     min_area = max(20, 5000 - int(self.sensitivity * 49.5))
                     
                     motion_boxes = []
+                    motion_detected_this_frame = False
                     for c in contours:
                         if cv2.contourArea(c) < min_area:
                             continue
@@ -295,18 +297,19 @@ class CameraThread(threading.Thread):
                         ox, oy, ow, oh = int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
                         motion_boxes.append((ox, oy, ow, oh))
                         
-                    # Draw boxes on displaying frame
-                    if motion_detected_this_frame:
-                        for (ox, oy, ow, oh) in motion_boxes:
-                            cv2.rectangle(display_frame, (ox, oy), (ox + ow, oy + oh), (0, 0, 255), 2)
+                    # Handle motion state machine
+                    self._update_motion_state(motion_detected_this_frame)
+                    
+                # Draw the boxes from the latest motion detection check
+                if self.motion_enabled:
+                    for (ox, oy, ow, oh) in motion_boxes:
+                        cv2.rectangle(display_frame, (ox, oy), (ox + ow, oy + oh), (0, 0, 255), 2)
+                    if len(motion_boxes) > 0:
                         # Draw motion indicator
                         cv2.circle(display_frame, (30, 70), 10, (0, 0, 255), -1)
                         cv2.putText(display_frame, "MOTION DETECTED", (50, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
                         
                 self.latest_stream_frame = display_frame
-                
-                # Handle motion state machine
-                self._update_motion_state(motion_detected_this_frame)
                 
                 # Write to recording file if recording
                 if self.is_recording:
