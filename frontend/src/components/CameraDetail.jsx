@@ -19,6 +19,8 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const touchStartRef = useRef({ distance: 0, x: 0, y: 0, scale: 1 });
   const containerRef = useRef(null);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const seekOffsetRef = useRef(0);
 
   // Reset zoom when camera or playback mode changes
   useEffect(() => {
@@ -183,6 +185,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
       setPlaybackMode(false);
       setActiveRecording(null);
       setCurrentPlaybackTime(null);
+      setVideoSrc(null);
       return;
     }
 
@@ -194,10 +197,24 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     const playbackTime = new Date(start.getTime() + offsetSeconds * 1000);
     setCurrentPlaybackTime(playbackTime);
 
-    // Seek the video player
+    // Save seek offset and src
+    seekOffsetRef.current = offsetSeconds;
+    const srcUrl = `/api/recordings/play/${recording.filepath}`;
+    setVideoSrc(srcUrl);
+
+    // Seek the video player if already mounted and loaded
     if (videoRef.current) {
-      videoRef.current.src = `/api/recordings/play/${recording.filepath}`;
-      videoRef.current.currentTime = offsetSeconds;
+      const currentSrc = videoRef.current.src;
+      if (currentSrc && currentSrc.endsWith(recording.filepath)) {
+        videoRef.current.currentTime = offsetSeconds;
+        videoRef.current.play().catch(err => console.log("Play failed: ", err));
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = seekOffsetRef.current;
       videoRef.current.play().catch(err => console.log("Play failed: ", err));
     }
   };
@@ -299,7 +316,9 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             ) : (
               <video
                 ref={videoRef}
+                src={videoSrc}
                 className="camera-stream-img"
+                onLoadedMetadata={handleLoadedMetadata}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={handleVideoEnded}
                 controls
