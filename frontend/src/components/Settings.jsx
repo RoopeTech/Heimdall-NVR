@@ -275,9 +275,10 @@ export default function Settings({ cameras, onReload }) {
                   <option value="onvif">ONVIF (Standard)</option>
                   <option value="foscam_cgi">Foscam CGI (Old models, decoder_control.cgi)</option>
                   <option value="foscam_hd">Foscam HD (Newer models, CGIProxy.fcgi)</option>
+                  <option value="camhi">CamHi / Boavision (hi3510, ptzctrl.cgi)</option>
                 </select>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Choose ONVIF for standard cameras, or Foscam CGI/HD depending on your Boavision/Foscam compatible camera settings.
+                  Choose ONVIF for standard cameras, Foscam, or CamHi (common on Boavision/HX cameras).
                 </span>
               </div>
 

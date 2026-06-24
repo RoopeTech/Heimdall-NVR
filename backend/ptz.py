@@ -199,7 +199,35 @@ def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0
     return False
 
 def send_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0, z=0.0):
-    if not ptz_type or ptz_type == "onvif":
+    if ptz_type == "camhi":
+        return send_camhi_ptz(ip, port, username, password, action, x, y, z)
+    elif not ptz_type or ptz_type == "onvif":
         return send_onvif_ptz(ip, port, username, password, action, x, y, z)
     else:
         return send_foscam_ptz(ip, port, username, password, ptz_type, action, x, y, z)
+
+def send_camhi_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0):
+    # CamHi cameras (hi3510 / Huaxin) use /cgi-bin/hi3510/ptzctrl.cgi
+    act = None
+    if action == "move":
+        if y > 0.1: act = "up"
+        elif y < -0.1: act = "down"
+        elif x < -0.1: act = "left"
+        elif x > 0.1: act = "right"
+        elif z > 1.1: act = "zoomin"
+        elif z < 0.9: act = "zoomout"
+    elif action == "stop":
+        act = "stop"
+        
+    if act:
+        url = f"http://{ip}:{port}/cgi-bin/hi3510/ptzctrl.cgi?-step=0&-act={act}&-speed=45"
+        try:
+            from requests.auth import HTTPBasicAuth
+            # Attempt with basic auth (often required by CamHi firmware)
+            res = requests.get(url, auth=HTTPBasicAuth(username, password), timeout=3)
+            return res.status_code == 200
+        except Exception as e:
+            print(f"CamHi PTZ Error: {e}")
+            return False
+            
+    return False
