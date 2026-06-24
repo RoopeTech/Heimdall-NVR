@@ -160,6 +160,18 @@ class MockCapture:
     def release(self):
         pass
 
+def inject_credentials(url, username, password):
+    if not username or not password:
+        return url
+    if url.startswith("rtsp://"):
+        import urllib.parse
+        encoded_user = urllib.parse.quote_plus(username)
+        encoded_pass = urllib.parse.quote_plus(password)
+        raw_url = url[7:] # strip rtsp://
+        if "@" in raw_url:
+            return url # Already has credentials in URL
+        return f"rtsp://{encoded_user}:{encoded_pass}@{raw_url}"
+    return url
 
 class CameraThread(threading.Thread):
     def __init__(self, camera_info):
@@ -169,6 +181,8 @@ class CameraThread(threading.Thread):
         self.main_url = camera_info['main_url']
         self.sub_url = camera_info['sub_url']
         self.record_mode = camera_info.get('record_mode', 'motion')
+        self.rtsp_user = camera_info.get('rtsp_user')
+        self.rtsp_pass = camera_info.get('rtsp_pass')
         
         # Motion detection settings
         self.motion_enabled = camera_info.get('motion_enabled', 1) == 1
@@ -216,7 +230,8 @@ class CameraThread(threading.Thread):
                 cap = self.mock_cap
             else:
                 # Open sub-stream for live view & motion detection
-                cap = cv2.VideoCapture(self.sub_url)
+                auth_sub_url = inject_credentials(self.sub_url, self.rtsp_user, self.rtsp_pass)
+                cap = cv2.VideoCapture(auth_sub_url)
                 if not cap.isOpened():
                     print(f"[{self.name}] Failed to open sub-stream: {self.sub_url}. Retrying in 10s...")
                     time.sleep(10)
@@ -408,10 +423,11 @@ class CameraThread(threading.Thread):
                 
         # Command: copy H264 stream without transcoding
         # -movflags +faststart moves the index (moov atom) to the beginning for remote progressive streaming
+        auth_main_url = inject_credentials(self.main_url, self.rtsp_user, self.rtsp_pass)
         cmd = [
             ffmpeg_cmd, '-y',
             '-rtsp_transport', 'tcp',
-            '-i', self.main_url,
+            '-i', auth_main_url,
             '-c', 'copy',
             '-an', # disable audio to avoid format mismatches
             '-movflags', '+faststart',

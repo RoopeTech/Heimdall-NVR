@@ -19,6 +19,8 @@ export default function Settings({ cameras, onReload }) {
   const [preRoll, setPreRoll] = useState(0);
   const [postRoll, setPostRoll] = useState(5);
   const [recordMode, setRecordMode] = useState('motion');
+  const [rtspUser, setRtspUser] = useState('');
+  const [rtspPass, setRtspPass] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +53,8 @@ export default function Settings({ cameras, onReload }) {
     setPreRoll(cam.pre_roll || 0);
     setPostRoll(cam.post_roll || 5);
     setRecordMode(cam.record_mode || 'motion');
+    setRtspUser(cam.rtsp_user || '');
+    setRtspPass(cam.rtsp_pass || '');
     setActiveTab('form');
   };
 
@@ -70,6 +74,8 @@ export default function Settings({ cameras, onReload }) {
     setPreRoll(0);
     setPostRoll(5);
     setRecordMode('motion');
+    setRtspUser('');
+    setRtspPass('');
   };
 
   const handleCreateNew = () => {
@@ -97,6 +103,8 @@ export default function Settings({ cameras, onReload }) {
       pre_roll: parseInt(preRoll),
       post_roll: parseInt(postRoll),
       record_mode: recordMode,
+      rtsp_user: rtspUser || null,
+      rtsp_pass: rtspPass || null,
     };
 
     try {
@@ -240,7 +248,7 @@ export default function Settings({ cameras, onReload }) {
                   className="form-input" 
                   value={mainUrl} 
                   onChange={(e) => setMainUrl(e.target.value)} 
-                  placeholder="rtsp://admin:password@ip:554/h264"
+                  placeholder="rtsp://ip:554/h264"
                   required
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -255,11 +263,39 @@ export default function Settings({ cameras, onReload }) {
                   className="form-input" 
                   value={subUrl} 
                   onChange={(e) => setSubUrl(e.target.value)} 
-                  placeholder="rtsp://admin:password@ip:554/h264_sub"
+                  placeholder="rtsp://ip:554/h264_sub"
                   required
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   Used for live grid streaming and motion detection analysis. Use <code>mock://camera1_sub</code> for testing.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">RTSP Stream Username (Optional)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={rtspUser} 
+                  onChange={(e) => setRtspUser(e.target.value)} 
+                  placeholder="e.g. admin"
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Credentials will be automatically stripped from pasted URLs and stored securely.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">RTSP Stream Password (Optional)</label>
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  value={rtspPass} 
+                  onChange={(e) => setRtspPass(e.target.value)} 
+                  placeholder="••••••••"
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Masked password input to prevent plain-text exposure in your browser window.
                 </span>
               </div>
 

@@ -90,6 +90,53 @@ def get_camera(camera_id: int):
         raise HTTPException(status_code=404, detail="Camera not found")
     return camera
 
+def sanitize_and_extract_rtsp(url):
+    """
+    Extracts credentials from an RTSP URL if present, and returns (cleaned_url, user, password).
+    If no credentials are in the URL, returns (url, None, None).
+    """
+    if not url or not url.startswith("rtsp://"):
+        return url, None, None
+        
+    raw_url = url[7:] # strip rtsp://
+    if "@" in raw_url:
+        try:
+            auth_part, host_part = raw_url.split("@", 1)
+            if ":" in auth_part:
+                user, password = auth_part.split(":", 1)
+                import urllib.parse
+                user = urllib.parse.unquote(user)
+                password = urllib.parse.unquote(password)
+                cleaned_url = f"rtsp://{host_part}"
+                return cleaned_url, user, password
+            else:
+                import urllib.parse
+                user = urllib.parse.unquote(auth_part)
+                cleaned_url = f"rtsp://{host_part}"
+                return cleaned_url, user, None
+        except Exception:
+            pass
+            
+    return url, None, None
+
+def process_camera_data(data: dict):
+    # Process main_url and sub_url to extract credentials if present
+    main_url = data.get('main_url', '')
+    sub_url = data.get('sub_url', '')
+    
+    cleaned_main, main_user, main_pass = sanitize_and_extract_rtsp(main_url)
+    cleaned_sub, sub_user, sub_pass = sanitize_and_extract_rtsp(sub_url)
+    
+    # Use explicitly submitted credentials, or fall back to what we parsed from URLs
+    rtsp_user = data.get('rtsp_user') or main_user or sub_user
+    rtsp_pass = data.get('rtsp_pass') or main_pass or sub_pass
+    
+    data['main_url'] = cleaned_main
+    data['sub_url'] = cleaned_sub
+    data['rtsp_user'] = rtsp_user or None
+    data['rtsp_pass'] = rtsp_pass or None
+    return data
+
 @app.post("/api/cameras")
 def add_camera(data: dict):
     # Validate required fields
@@ -98,7 +145,8 @@ def add_camera(data: dict):
         if r not in data:
             raise HTTPException(status_code=400, detail=f"Missing field: {r}")
             
-    cid = database.add_camera(data)
+    processed_data = process_camera_data(data)
+    cid = database.add_camera(processed_data)
     camera_manager.manager.reload_camera(cid)
     return {"id": cid, "message": "Camera added"}
 
@@ -108,7 +156,8 @@ def update_camera(camera_id: int, data: dict):
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
         
-    database.update_camera(camera_id, data)
+    processed_data = process_camera_data(data)
+    database.update_camera(camera_id, processed_data)
     camera_manager.manager.reload_camera(camera_id)
     return {"message": "Camera updated"}
 

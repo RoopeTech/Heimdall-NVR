@@ -30,7 +30,9 @@ def init_db():
         motion_threshold INTEGER DEFAULT 25,   -- 1-100 (pixel intensity diff threshold)
         pre_roll INTEGER DEFAULT 0,            -- in seconds
         post_roll INTEGER DEFAULT 5,           -- in seconds
-        record_mode TEXT DEFAULT 'motion'      -- 'motion' | 'always' | 'hybrid'
+        record_mode TEXT DEFAULT 'motion',     -- 'motion' | 'always' | 'hybrid'
+        rtsp_user TEXT,
+        rtsp_pass TEXT
     )
     """)
     
@@ -47,6 +49,14 @@ def init_db():
         conn.commit()
     except sqlite3.OperationalError:
         pass # Column already exists
+        
+    # Migration: add rtsp_user and rtsp_pass to existing databases
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN rtsp_user TEXT")
+        cursor.execute("ALTER TABLE cameras ADD COLUMN rtsp_pass TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Columns already exist
     
     # Create recordings table
     cursor.execute("""
@@ -115,15 +125,16 @@ def add_camera(camera_data):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
         camera_data.get('ptz_ip'), camera_data.get('ptz_port'), camera_data.get('ptz_user'), camera_data.get('ptz_pass'),
         camera_data.get('ptz_type', 'onvif'),
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
         camera_data.get('motion_threshold', 25), camera_data.get('pre_roll', 0), camera_data.get('post_roll', 5),
-        camera_data.get('record_mode', 'motion')
+        camera_data.get('record_mode', 'motion'),
+        camera_data.get('rtsp_user'), camera_data.get('rtsp_pass')
     ))
     camera_id = cursor.lastrowid
     conn.commit()
@@ -136,7 +147,7 @@ def update_camera(camera_id, camera_data):
     cursor.execute("""
     UPDATE cameras
     SET name=?, main_url=?, sub_url=?, ptz_ip=?, ptz_port=?, ptz_user=?, ptz_pass=?, ptz_type=?,
-        motion_enabled=?, motion_sensitivity=?, motion_threshold=?, pre_roll=?, post_roll=?, record_mode=?
+        motion_enabled=?, motion_sensitivity=?, motion_threshold=?, pre_roll=?, post_roll=?, record_mode=?, rtsp_user=?, rtsp_pass=?
     WHERE id=?
     """, (
         camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
@@ -145,6 +156,7 @@ def update_camera(camera_id, camera_data):
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
         camera_data.get('motion_threshold', 25), camera_data.get('pre_roll', 0), camera_data.get('post_roll', 5),
         camera_data.get('record_mode', 'motion'),
+        camera_data.get('rtsp_user'), camera_data.get('rtsp_pass'),
         camera_id
     ))
     conn.commit()
