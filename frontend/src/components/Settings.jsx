@@ -288,7 +288,6 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       }
     };
     reader.readAsText(file);
-    }
   };
 
   const fetchUpdateStatus = async () => {
