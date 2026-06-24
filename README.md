@@ -30,6 +30,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
 *   **Progressive Web App (PWA)**: Fully installable PWA for Android/iOS Chrome and desktop browsers. Features customized security camera launcher icons, custom manifest files, and a service worker configured with pass-through bypasses for live feeds and playback segments to prevent browser cache exhaustion.
 *   **Storage Retention (Auto-Cleanup)**: Configurable timer settings to automatically prune expired recordings and delete their files from the disk once they cross the threshold (e.g. keep recordings for 7 days).
 *   **Configuration Backup & Restore**: Download a single JSON backup of your cameras, system settings, and user accounts. Restore this backup file on another machine to migrate servers instantly.
+*   **In-App System Updates**: Checks for newer versions against the remote Gitea repository. Admins can pull updates, rebuild the React frontend, and restart the backend server automatically from the Web UI.
 *   **Camera Simulator**: Preconfigured out-of-the-box with a simulated indoor room, bouncing intruder target, and interactive PTZ responses. Test motion logging, timeline playback, and events instantly without connecting a physical camera.
 
 ---
@@ -135,12 +136,13 @@ To configure the application to run automatically as a background daemon on boot
 
 ---
 
-## ⚙️ Administration & Server Migration
+## ⚙️ Administration, Updates & Server Migration
 
-To configure storage cleanup or backup your settings, navigate to the **System Settings** tab (accessible only by users with the **Admin** role):
+To manage the NVR application, check for updates, or backup settings, navigate to the **System Settings** tab (accessible only by users with the **Admin** role):
 1. **Auto-delete Old Recordings**: Set the number of retention days (e.g. `7`). The background cleanup thread will run hourly and remove old files from disk. Set to `0` to keep recordings forever.
 2. **Export Config File**: Click the button to download a `.json` backup containing all configured cameras, system title, and user accounts.
 3. **Import Config File**: Upload the `.json` file on a new server to restore your complete NVR configuration instantly.
+4. **System Updates Manager**: Check local versus remote git commit hashes. If a newer version is available, click **Apply System Update** to perform a git pull, recompile UI static files, and hot-restart the NVR daemon process.
 
 ---
 
