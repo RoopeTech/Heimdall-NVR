@@ -74,32 +74,33 @@ ip-camera-nvr/
 
 ---
 
-## 🛠️ Automated Setup & Installation
+## 🛠️ Setup & Installation
 
-I have created dedicated installer scripts that automate package detection, virtual environments, dependency compilation, and desktop shortcuts.
+### 1. Clone the Repository
+Before installing, you must clone the repository from Gitea and enter the project folder. Run this on your machine:
+```bash
+git clone http://10.0.1.69:3000/roopetech/RTNVR.git
+cd RTNVR
+```
+*(All installation and update commands must be run from inside this folder).*
 
-### Windows (PowerShell)
-1. Open PowerShell and navigate to the project folder:
-   ```powershell
-   cd C:\Users\woods\.gemini\antigravity\scratch\ip-camera-nvr
-   ```
-2. Run the installer script:
-   ```powershell
-   .\install.ps1
-   ```
-   *This checks for Node.js, Python, and FFmpeg (installing them via `winget` if missing), builds the Python virtual environment, installs npm packages, compiles frontend assets, and registers a double-clickable **Antigravity NVR** shortcut on your Desktop.*
+### 2. Run the Automated Installer
+We provide dedicated installer scripts that check for system dependencies (Node.js, Python, FFmpeg), create a virtual environment, install packages, and compile frontend assets.
 
-### Linux (Debian/Ubuntu/Fedora/Arch)
-1. Open a terminal and navigate to the project directory:
-   ```bash
-   cd /path/to/ip-camera-nvr
-   ```
-2. Make the installer executable and run it:
-   ```bash
-   chmod +x install.sh
-   ./install.sh
-   ```
-   *This checks for system tools, creates a Python virtual environment, compiles the frontend bundle, and registers the application in your Desktop environment launcher menu.*
+#### Windows (PowerShell)
+From the cloned `RTNVR` directory, run:
+```powershell
+.\install.ps1
+```
+*This will also register a double-clickable **Antigravity NVR** shortcut on your Desktop.*
+
+#### Linux (Debian/Ubuntu/Fedora/Arch)
+From the cloned `RTNVR` directory, make the script executable and run it:
+```bash
+chmod +x install.sh
+./install.sh
+```
+*This will also register the application in your desktop environment's launcher menu.*
 
 ---
 
