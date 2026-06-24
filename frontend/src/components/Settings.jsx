@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-export default function Settings({ cameras, onReload }) {
+export default function Settings({ cameras, onReload, onReloadSettings }) {
   const [activeTab, setActiveTab] = useState('list');
   const [editingCamera, setEditingCamera] = useState(null);
+  const [appTitleInput, setAppTitleInput] = useState('');
   
   // Form State
   const [name, setName] = useState('');
@@ -36,6 +37,68 @@ export default function Settings({ cameras, onReload }) {
       return () => clearTimeout(timer);
     }
   }, [success, error]);
+
+  // Load app title settings when settings loads or activeTab changes
+  useEffect(() => {
+    const fetchSysSettings = async () => {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          setAppTitleInput(data.app_title || '');
+        }
+      } catch (e) {
+        console.error('Error fetching settings inside Settings.jsx:', e);
+      }
+    };
+    fetchSysSettings();
+  }, [activeTab]);
+
+  const handleSaveSystemSettings = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_title: appTitleInput }),
+      });
+      if (res.ok) {
+        setSuccess('System settings updated successfully!');
+        if (onReloadSettings) {
+          onReloadSettings();
+        }
+      } else {
+        setError('Failed to update system settings.');
+      }
+    } catch (err) {
+      setError('Network error saving system settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDuplicate = (cam) => {
+    setEditingCamera(null);
+    setName(`${cam.name} - Copy`);
+    setMainUrl(cam.main_url);
+    setSubUrl(cam.sub_url);
+    setPtzIp(cam.ptz_ip || '');
+    setPtzPort(cam.ptz_port || 80);
+    setPtzUser(cam.ptz_user || '');
+    setPtzPass(cam.ptz_pass || '');
+    setPtzType(cam.ptz_type || 'onvif');
+    setMotionEnabled(cam.motion_enabled === 1);
+    setSensitivity(cam.motion_sensitivity);
+    setThreshold(cam.motion_threshold);
+    setPreRoll(cam.pre_roll || 0);
+    setPostRoll(cam.post_roll || 5);
+    setRecordMode(cam.record_mode || 'motion');
+    setRtspUser(cam.rtsp_user || '');
+    setRtspPass(cam.rtsp_pass || '');
+    setActiveTab('form');
+  };
 
   const loadCameraIntoForm = (cam) => {
     setEditingCamera(cam);
@@ -167,6 +230,12 @@ export default function Settings({ cameras, onReload }) {
         >
           ➕ Add Camera
         </button>
+        <button 
+          className={`settings-nav-btn ${activeTab === 'system' ? 'active' : ''}`}
+          onClick={() => setActiveTab('system')}
+        >
+          ⚙️ Branding Settings
+        </button>
         {activeTab === 'form' && editingCamera && (
           <button className="settings-nav-btn active">
             📝 Edit: {editingCamera.name}
@@ -205,6 +274,9 @@ export default function Settings({ cameras, onReload }) {
                     <button className="btn btn-secondary" onClick={() => loadCameraIntoForm(cam)}>
                       Edit
                     </button>
+                    <button className="btn btn-secondary" onClick={() => handleDuplicate(cam)}>
+                      Duplicate
+                    </button>
                     {cameras.length > 1 ? (
                       <button className="btn btn-danger" onClick={() => handleDelete(cam.id)}>
                         Delete
@@ -222,6 +294,31 @@ export default function Settings({ cameras, onReload }) {
               Add New Camera Device
             </button>
           </div>
+        ) : activeTab === 'system' ? (
+          <form onSubmit={handleSaveSystemSettings}>
+            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Branding Settings</h2>
+            
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Application Title</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={appTitleInput} 
+                onChange={(e) => setAppTitleInput(e.target.value)} 
+                placeholder="e.g. My Home NVR"
+                required
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Customize the name shown in the browser title bar, tabs, and top-left header logo.
+              </span>
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </form>
         ) : (
           <form onSubmit={handleSave}>
             <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>

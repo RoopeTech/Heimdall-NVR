@@ -11,10 +11,24 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [activeTab, setActiveTab] = useState('grid');
   const [selectedCamera, setSelectedCamera] = useState(null);
+  const [appTitle, setAppTitle] = useState('Antigravity NVR');
   
   // States for deep-linked playback from event click
   const [initialRecording, setInitialRecording] = useState(null);
   const [initialOffset, setInitialOffset] = useState(0);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setAppTitle(data.app_title);
+        document.title = data.app_title;
+      }
+    } catch (e) {
+      console.error('Error fetching settings:', e);
+    }
+  };
 
   const fetchCameras = async () => {
     try {
@@ -55,6 +69,7 @@ export default function App() {
 
   // Poll database updates
   useEffect(() => {
+    fetchSettings();
     fetchCameras();
     fetchRecordings();
     fetchEvents();
@@ -117,7 +132,7 @@ export default function App() {
       <header className="app-header">
         <div className="logo-container">
           <span className="logo-icon">📹</span>
-          <span className="logo-text">Antigravity NVR</span>
+          <span className="logo-text">{appTitle}</span>
         </div>
 
         <nav className="nav-tabs">
@@ -186,6 +201,7 @@ export default function App() {
           <Settings 
             cameras={cameras} 
             onReload={fetchCameras}
+            onReloadSettings={fetchSettings}
           />
         )}
       </main>

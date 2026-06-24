@@ -83,7 +83,21 @@ def init_db():
     )
     """)
     
+    # Create system_settings table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )
+    """)
+    
     conn.commit()
+
+    # Insert default settings
+    cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = 'app_title'")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO system_settings (key, value) VALUES ('app_title', 'Antigravity NVR')")
+        conn.commit()
     
     # Insert default mock camera if database is brand new
     cursor.execute("SELECT COUNT(*) FROM cameras")
@@ -256,3 +270,17 @@ def get_events(camera_id=None, limit=100):
     events = [dict(row) for row in conn.execute(query, params).fetchall()]
     conn.close()
     return events
+
+# System Settings Operations
+def get_system_setting(key):
+    conn = get_db_connection()
+    row = conn.execute("SELECT value FROM system_settings WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return row['value'] if row else None
+
+def set_system_setting(key, value):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()

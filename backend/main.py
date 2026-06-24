@@ -191,6 +191,19 @@ def play_recording(filename: str):
 def list_events(camera_id: int = Query(None), limit: int = 100):
     return database.get_events(camera_id, limit)
 
+# System Settings API
+@app.get("/api/settings")
+def get_system_settings():
+    return {
+        "app_title": database.get_system_setting("app_title") or "Antigravity NVR"
+    }
+
+@app.post("/api/settings")
+def save_system_settings(data: dict):
+    if "app_title" in data:
+        database.set_system_setting("app_title", data["app_title"])
+    return {"success": True}
+
 # Serve Frontend static assets
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 
@@ -216,7 +229,8 @@ def launch_ui():
     try:
         import webview
         print("[NVR] Launching PyWebView Local UI window...")
-        webview.create_window("Antigravity IP Camera NVR Dashboard", url, width=1280, height=800)
+        title = database.get_system_setting("app_title") or "Antigravity IP Camera NVR Dashboard"
+        webview.create_window(title, url, width=1280, height=800)
         webview.start()
         webview_launched = True
     except Exception as e:
