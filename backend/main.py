@@ -66,15 +66,17 @@ def shutdown_event():
 
 # Live Video Stream (MJPEG)
 @app.get("/api/cameras/{camera_id}/live")
-def get_live_stream(camera_id: int, raw: bool = False, current_user: dict = Depends(get_current_user)):
+async def get_live_stream(request: Request, camera_id: int, raw: bool = False, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
         
-    def frame_generator():
-        # Get frame from manager
+    async def frame_generator():
+        import asyncio
         while True:
-            # draw_boxes=True draws red motion overlays on sub-stream
+            if await request.is_disconnected():
+                break
+                
             frame = camera_manager.manager.get_latest_frame(camera_id, draw_boxes=not raw)
             if frame is not None:
                 import cv2
@@ -82,7 +84,7 @@ def get_live_stream(camera_id: int, raw: bool = False, current_user: dict = Depe
                 if ret:
                     yield (b'--frame\r\n'
                            b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-            time.sleep(0.08) # ~12 FPS for UI grid to conserve resources
+            await asyncio.sleep(0.08) # ~12 FPS for UI grid to conserve resources
 
     return StreamingResponse(
         frame_generator(),
