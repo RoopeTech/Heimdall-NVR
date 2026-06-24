@@ -178,6 +178,7 @@ def inject_credentials(url, username, password):
 class CameraThread(threading.Thread):
     def __init__(self, camera_info):
         super().__init__()
+        self.daemon = True
         self.camera_id = camera_info['id']
         self.name = camera_info['name']
         self.main_url = camera_info['main_url']
