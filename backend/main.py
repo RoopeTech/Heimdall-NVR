@@ -388,9 +388,16 @@ def launch_ui():
         webbrowser.open(url)
 
 if __name__ == "__main__":
-    # Start server in a background thread so webview can run on main thread (required on macOS/Windows/Linux)
-    server_thread = threading.Thread(target=start_server, daemon=True)
-    server_thread.start()
+    import sys
+    is_headless = "--headless" in sys.argv or os.environ.get("NVR_HEADLESS") == "1"
     
-    # Launch UI (webview or web browser fallback) on the main thread
-    launch_ui()
+    if is_headless:
+        print("[NVR] Running in Headless Mode on main thread.")
+        start_server()
+    else:
+        # Start server in a background thread so webview can run on main thread (required on macOS/Windows/Linux)
+        server_thread = threading.Thread(target=start_server, daemon=True)
+        server_thread.start()
+        
+        # Launch UI (webview or web browser fallback) on the main thread
+        launch_ui()
