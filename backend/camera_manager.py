@@ -504,6 +504,25 @@ class CameraThread(threading.Thread):
                 )
         return False
 
+    def ptz_home(self):
+        if self.is_mock and self.mock_cap:
+            # Simulation: set pan/tilt to 0, zoom to 1
+            self.mock_cap.update_ptz(0.0, 0.0, 1.0)
+            return True
+        else:
+            db_cam = database.get_camera(self.camera_id)
+            if db_cam and db_cam['ptz_ip']:
+                import ptz
+                return ptz.send_ptz(
+                    db_cam['ptz_ip'],
+                    db_cam['ptz_port'] or 80,
+                    db_cam['ptz_user'] or "",
+                    db_cam['ptz_pass'] or "",
+                    db_cam.get('ptz_type', 'onvif'),
+                    "home"
+                )
+        return False
+
     def stop(self):
         self.running = False
 
@@ -559,6 +578,8 @@ class CameraManager:
                 return thread.ptz_move(pan, tilt, zoom)
             elif action == "stop":
                 return thread.ptz_stop()
+            elif action == "home":
+                return thread.ptz_home()
         return False
         
     def set_mock_motion(self, camera_id, enabled):

@@ -126,6 +126,14 @@ def send_onvif_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0, pr
         """
         soap_action = "http://www.onvif.org/ver20/ptz/wsdl/GotoPreset"
         
+    elif action == "home":
+        body = f"""
+        <tptz:GotoHomePosition>
+            <tptz:ProfileToken>{profile}</tptz:ProfileToken>
+        </tptz:GotoHomePosition>
+        """
+        soap_action = "http://www.onvif.org/ver20/ptz/wsdl/GotoHomePosition"
+        
     else:
         raise ValueError(f"Unknown PTZ action: {action}")
         
@@ -144,7 +152,7 @@ def send_onvif_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0, pr
 
 def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0, z=0.0):
     # ptz_type is either 'foscam_cgi' (old) or 'foscam_hd' (CGIProxy)
-    # action is either "move" or "stop"
+    # action is either "move", "stop", or "home"
     
     if ptz_type == "foscam_cgi":
         cmd = None
@@ -154,6 +162,8 @@ def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0
             elif y < -0.1: cmd = 2
             elif x < -0.1: cmd = 4
             elif x > 0.1: cmd = 6
+        elif action == "home":
+            cmd = 31 # Go to preset 1 (Home)
         elif action == "stop":
             # Stop command: 1 (stops up/down), 5 (stops left/right)
             url_stop_pt = f"http://{ip}:{port}/decoder_control.cgi?command=1&usr={username}&pwd={password}"
@@ -184,6 +194,8 @@ def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0
             elif x > 0.1: cmd_str = "ptzMoveRight"
             elif z > 1.1: cmd_str = "zoomIn"
             elif z < 0.9: cmd_str = "zoomOut"
+        elif action == "home":
+            cmd_str = "goHome"
         elif action == "stop":
             cmd_str = "ptzStopRun"
             

@@ -59,6 +59,13 @@ export default function PTZControls({ cameraId, isMock }) {
     sendCommand('move', 0.0, 0.0, 1.0);
   };
 
+  const handleGoHome = () => {
+    setPan(0.0);
+    setTilt(0.0);
+    setZoom(1.0);
+    sendCommand('home');
+  };
+
   return (
     <div className="ptz-joystick-container fade-in">
       <h3 className="form-label" style={{ marginBottom: '12px', textAlign: 'center' }}>
@@ -116,12 +123,13 @@ export default function PTZControls({ cameraId, isMock }) {
         </button>
       </div>
 
-      <div className="zoom-controls">
+      <div className="zoom-controls" style={{ display: 'flex', gap: '8px', width: '100%' }}>
         <button 
           className="zoom-btn"
           onMouseDown={() => handleStartMove('zoom-in', 0.0, 0.0, zoom + 0.25)}
           onMouseUp={handleStopMove}
           onMouseLeave={handleStopMove}
+          style={{ flex: 1 }}
         >
           🔍 +
         </button>
@@ -130,8 +138,17 @@ export default function PTZControls({ cameraId, isMock }) {
           onMouseDown={() => handleStartMove('zoom-out', 0.0, 0.0, Math.max(1.0, zoom - 0.25))}
           onMouseUp={handleStopMove}
           onMouseLeave={handleStopMove}
+          style={{ flex: 1 }}
         >
           🔍 -
+        </button>
+        <button 
+          className="zoom-btn"
+          onClick={handleGoHome}
+          style={{ flex: 1, background: 'rgba(14, 165, 233, 0.1)', borderColor: 'rgba(14, 165, 233, 0.25)', color: 'var(--primary)' }}
+          title="Go to Home Position"
+        >
+          🏠 Home
         </button>
       </div>
 
