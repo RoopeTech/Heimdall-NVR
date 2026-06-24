@@ -344,7 +344,7 @@ export default function Settings({ cameras, onReload }) {
                   onChange={(e) => {
                     const mode = e.target.value;
                     setRecordMode(mode);
-                    if (mode === 'always') {
+                    if (mode === 'always' || mode === 'view_only') {
                       setMotionEnabled(false);
                     } else {
                       setMotionEnabled(true);
@@ -355,6 +355,7 @@ export default function Settings({ cameras, onReload }) {
                   <option value="motion">Motion Only (Record only on motion alerts)</option>
                   <option value="always">Always Record (Continuous 24/7, disable motion detection)</option>
                   <option value="hybrid">Hybrid (Continuous 24/7 + log motion events)</option>
+                  <option value="view_only">View Only (No recording, live feed only)</option>
                 </select>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   Continuous recordings are automatically split into 15-minute segments for easy timeline scrubbing and playback.
