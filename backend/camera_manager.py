@@ -8,6 +8,9 @@ import signal
 from datetime import datetime
 import database
 
+# Force OpenCV's FFmpeg backend to use TCP transport and set a 5-second connection/read timeout
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000"
+
 # Directory for recordings
 RECORDINGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "recordings")
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
@@ -255,130 +258,138 @@ class CameraThread(threading.Thread):
             motion_detected_this_frame = False
             
             while self.running:
-                # Read frames in a tight loop to drain the OpenCV buffer.
-                # cap.read() will block naturally matching the camera FPS.
-                ret, frame = cap.read()
-                if not ret:
-                    if self.is_mock:
-                        time.sleep(0.05) # Mock capture frame rate throttling
-                        continue
-                    else:
-                        print(f"[{self.name}] Stream connection lost. Reconnecting...")
-                        break
-                
-                # Keep copy of raw frame
-                self.latest_frame = frame.copy()
-                
-                # Draw motion overlay if active
-                display_frame = frame.copy()
-                
-                # We throttle motion detection running to ~8 FPS (every 120ms) to save CPU,
-                # but we read frames continuously to avoid buffer latency.
-                now = time.time()
-                run_motion = self.motion_enabled and (self.record_mode in ['motion', 'hybrid'])
-                if run_motion and (now - last_motion_time >= 0.12):
-                    last_motion_time = now
-                    
-                    # 1. Resize for performance
-                    resized = cv2.resize(frame, (320, 240))
-                    # 2. Blur and grayscale
-                    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-                    gray = cv2.GaussianBlur(gray, (21, 21), 0)
-                    
-                    # 3. Accumulate background
-                    if self.background_model is None:
-                        self.background_model = gray.copy().astype("float")
-                        continue
-                    
-                    cv2.accumulateWeighted(gray, self.background_model, 0.05)
-                    bg_diff = cv2.absdiff(gray, cv2.convertScaleAbs(self.background_model))
-                    
-                    # 4. Threshold & Dilation
-                    # Threshold defaults to 25. Lower = more sensitive
-                    thresh = cv2.threshold(bg_diff, self.threshold, 255, cv2.THRESH_BINARY)[1]
-                    thresh = cv2.dilate(thresh, None, iterations=2)
-                    
-                    # 5. Contours
-                    contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
-                    # Map sensitivity to pixel area: Sensitivity 1 -> area 5000, 100 -> area 50
-                    min_area = max(20, 5000 - int(self.sensitivity * 49.5))
-                    
-                    motion_boxes = []
-                    motion_detected_this_frame = False
-                    for c in contours:
-                        if cv2.contourArea(c) < min_area:
+                try:
+                    # Read frames in a tight loop to drain the OpenCV buffer.
+                    # cap.read() will block naturally matching the camera FPS.
+                    ret, frame = cap.read()
+                    if not ret:
+                        if self.is_mock:
+                            time.sleep(0.05) # Mock capture frame rate throttling
                             continue
-                        motion_detected_this_frame = True
-                        
-                        # Scale contour back to original frame size
-                        (x, y, w, h) = cv2.boundingRect(c)
-                        scale_x = frame.shape[1] / 320.0
-                        scale_y = frame.shape[0] / 240.0
-                        ox, oy, ow, oh = int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
-                        motion_boxes.append((ox, oy, ow, oh))
-                        
-                    # Handle motion state machine
-                    self._update_motion_state(motion_detected_this_frame)
+                        else:
+                            print(f"[{self.name}] Stream connection lost. Reconnecting...")
+                            break
                     
-                # Draw the boxes from the latest motion detection check
-                if self.motion_enabled:
-                    for (ox, oy, ow, oh) in motion_boxes:
-                        cv2.rectangle(display_frame, (ox, oy), (ox + ow, oy + oh), (0, 0, 255), 2)
-                    if len(motion_boxes) > 0:
-                        # Draw motion indicator
-                        cv2.circle(display_frame, (30, 70), 10, (0, 0, 255), -1)
-                        cv2.putText(display_frame, "MOTION DETECTED", (50, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                    # Keep copy of raw frame
+                    self.latest_frame = frame.copy()
+                    
+                    # Draw motion overlay if active
+                    display_frame = frame.copy()
+                    
+                    # We throttle motion detection running to ~8 FPS (every 120ms) to save CPU,
+                    # but we read frames continuously to avoid buffer latency.
+                    now = time.time()
+                    run_motion = self.motion_enabled and (self.record_mode in ['motion', 'hybrid'])
+                    if run_motion and (now - last_motion_time >= 0.12):
+                        last_motion_time = now
                         
-                # Draw OSD date/time overlay if enabled and it's a real camera (mock camera draws its own HUD)
-                if not self.is_mock and self.osd_enabled:
-                    try:
-                        h, w = display_frame.shape[:2]
-                        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        # 1. Resize for performance
+                        resized = cv2.resize(frame, (320, 240))
+                        # 2. Blur and grayscale
+                        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+                        gray = cv2.GaussianBlur(gray, (21, 21), 0)
                         
-                        # 1. Camera Name on top-left
-                        name_str = f"{self.name} | LIVE"
-                        name_size = cv2.getTextSize(name_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                        cv2.rectangle(display_frame, (10, 15), (20 + name_size[0], 45), (0, 0, 0), -1)
-                        cv2.putText(display_frame, name_str, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                        # 3. Accumulate background
+                        if self.background_model is None:
+                            self.background_model = gray.copy().astype("float")
+                            continue
                         
-                        # 2. Timestamp on top-right
-                        time_size = cv2.getTextSize(time_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                        text_x = w - time_size[0] - 20
-                        cv2.rectangle(display_frame, (text_x - 10, 15), (w - 10, 45), (0, 0, 0), -1)
-                        cv2.putText(display_frame, time_str, (text_x, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-                    except Exception as e:
-                        print(f"[{self.name}] Error drawing OSD overlay: {e}")
+                        cv2.accumulateWeighted(gray, self.background_model, 0.05)
+                        bg_diff = cv2.absdiff(gray, cv2.convertScaleAbs(self.background_model))
                         
-                self.latest_stream_frame = display_frame
-                
-                # Continuous / Hybrid segment splitting
-                if self.record_mode in ['always', 'hybrid']:
-                    if not self.is_recording:
-                        self._start_recording()
-                    else:
-                        elapsed = (datetime.now() - self.record_start_time).total_seconds()
-                        if elapsed >= 900: # 15 minutes
-                            print(f"[{self.name}] Segment completed ({elapsed:.1f}s). Rotating files...")
-                            self._stop_recording()
+                        # 4. Threshold & Dilation
+                        # Threshold defaults to 25. Lower = more sensitive
+                        thresh = cv2.threshold(bg_diff, self.threshold, 255, cv2.THRESH_BINARY)[1]
+                        thresh = cv2.dilate(thresh, None, iterations=2)
+                        
+                        # 5. Contours
+                        contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        
+                        # Map sensitivity to pixel area: Sensitivity 1 -> area 5000, 100 -> area 50
+                        min_area = max(20, 5000 - int(self.sensitivity * 49.5))
+                        
+                        motion_boxes = []
+                        motion_detected_this_frame = False
+                        for c in contours:
+                            if cv2.contourArea(c) < min_area:
+                                continue
+                            motion_detected_this_frame = True
+                            
+                            # Scale contour back to original frame size
+                            (x, y, w, h) = cv2.boundingRect(c)
+                            scale_x = frame.shape[1] / 320.0
+                            scale_y = frame.shape[0] / 240.0
+                            ox, oy, ow, oh = int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y)
+                            motion_boxes.append((ox, oy, ow, oh))
+                            
+                        # Handle motion state machine
+                        self._update_motion_state(motion_detected_this_frame)
+                        
+                    # Draw the boxes from the latest motion detection check
+                    if self.motion_enabled:
+                        for (ox, oy, ow, oh) in motion_boxes:
+                            cv2.rectangle(display_frame, (ox, oy), (ox + ow, oy + oh), (0, 0, 255), 2)
+                        if len(motion_boxes) > 0:
+                            # Draw motion indicator
+                            cv2.circle(display_frame, (30, 70), 10, (0, 0, 255), -1)
+                            cv2.putText(display_frame, "MOTION DETECTED", (50, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                            
+                    # Draw OSD date/time overlay if enabled and it's a real camera (mock camera draws its own HUD)
+                    if not self.is_mock and self.osd_enabled:
+                        try:
+                            h, w = display_frame.shape[:2]
+                            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # 1. Camera Name on top-left
+                            name_str = f"{self.name} | LIVE"
+                            name_size = cv2.getTextSize(name_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                            cv2.rectangle(display_frame, (10, 15), (20 + name_size[0], 45), (0, 0, 0), -1)
+                            cv2.putText(display_frame, name_str, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                            
+                            # 2. Timestamp on top-right
+                            time_size = cv2.getTextSize(time_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
+                            text_x = w - time_size[0] - 20
+                            cv2.rectangle(display_frame, (text_x - 10, 15), (w - 10, 45), (0, 0, 0), -1)
+                            cv2.putText(display_frame, time_str, (text_x, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
+                        except Exception as e:
+                            print(f"[{self.name}] Error drawing OSD overlay: {e}")
+                            
+                    self.latest_stream_frame = display_frame
+                    
+                    # Continuous / Hybrid segment splitting
+                    if self.record_mode in ['always', 'hybrid']:
+                        if not self.is_recording:
                             self._start_recording()
-
-                # Write to recording file if recording
-                if self.is_recording:
-                    if self.is_mock:
-                        if self.mock_writer:
-                            self.mock_writer.write(frame)
-                    else:
-                        # For real camera, ffmpeg is writing directly in background.
-                        # Check if ffmpeg died unexpectedly.
-                        if self.record_process and self.record_process.poll() is not None:
-                            print(f"[{self.name}] FFmpeg recording process died. Restarting...")
-                            self._start_ffmpeg()
+                        else:
+                            elapsed = (datetime.now() - self.record_start_time).total_seconds()
+                            if elapsed >= 900: # 15 minutes
+                                print(f"[{self.name}] Segment completed ({elapsed:.1f}s). Rotating files...")
+                                self._stop_recording()
+                                self._start_recording()
+        
+                    # Write to recording file if recording
+                    if self.is_recording:
+                        if self.is_mock:
+                            if self.mock_writer:
+                                self.mock_writer.write(frame)
+                        else:
+                            # For real camera, ffmpeg is writing directly in background.
+                            # Check if ffmpeg died unexpectedly.
+                            if self.record_process and self.record_process.poll() is not None:
+                                print(f"[{self.name}] FFmpeg recording process died. Restarting...")
+                                self._start_ffmpeg()
+                except Exception as e:
+                    print(f"[{self.name}] Error in camera thread loop: {e}")
+                    time.sleep(1.0) # sleep briefly to prevent tight CPU looping if exception persists
                             
             cap.release()
             if self.mock_writer:
                 self.mock_writer.release()
                 self.mock_writer = None
+            
+            # Wait at least 2 seconds before reconnecting to prevent camera flooding
+            if not self.is_mock and self.running:
+                time.sleep(2)
             
         print(f"[{self.name}] Camera thread exiting.")
         self._stop_recording()
