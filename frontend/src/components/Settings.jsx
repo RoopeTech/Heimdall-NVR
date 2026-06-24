@@ -4,6 +4,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [activeTab, setActiveTab] = useState('list');
   const [editingCamera, setEditingCamera] = useState(null);
   const [appTitleInput, setAppTitleInput] = useState('');
+  const [retentionDaysInput, setRetentionDaysInput] = useState('0');
 
   // User Management State
   const [userList, setUserList] = useState([]);
@@ -167,6 +168,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
         if (res.ok) {
           const data = await res.json();
           setAppTitleInput(data.app_title || '');
+          setRetentionDaysInput(data.retention_days || '0');
         }
       } catch (e) {
         console.error('Error fetching settings inside Settings.jsx:', e);
@@ -186,7 +188,10 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ app_title: appTitleInput }),
+        body: JSON.stringify({ 
+          app_title: appTitleInput,
+          retention_days: parseInt(retentionDaysInput) || 0
+        }),
       });
       if (res.ok) {
         setSuccess('System settings updated successfully!');
@@ -201,6 +206,81 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportConfig = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch('/api/settings/backup', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nvr_config_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setSuccess('Configuration exported successfully.');
+      } else {
+        setError('Failed to export configuration.');
+      }
+    } catch (err) {
+      setError('Network error exporting configuration.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportConfig = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!confirm('WARNING: Importing configuration will overwrite all current cameras, user accounts, and settings. You may be logged out. Are you sure you want to proceed?')) {
+      e.target.value = '';
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const payload = JSON.parse(event.target.result);
+        const res = await fetch('/api/settings/restore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (res.ok) {
+          setSuccess('Configuration imported successfully! Reloading NVR...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          const data = await res.json();
+          setError(data.detail || 'Failed to import configuration.');
+        }
+      } catch (err) {
+        setError('Invalid JSON backup file or network error during import.');
+      } finally {
+        setLoading(false);
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleDuplicate = (cam) => {
@@ -368,7 +448,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           className={`settings-nav-btn ${activeTab === 'system' ? 'active' : ''}`}
           onClick={() => setActiveTab('system')}
         >
-          ⚙️ Branding Settings
+          ⚙️ System Settings
         </button>
         {currentUser?.role === 'admin' && (
           <button 
@@ -441,7 +521,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           </div>
         ) : activeTab === 'system' ? (
           <form onSubmit={handleSaveSystemSettings}>
-            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Branding Settings</h2>
+            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>System Settings</h2>
             
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label className="form-label">Application Title</label>
@@ -458,10 +538,55 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
               </span>
             </div>
 
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Auto-delete Old Recordings (Days)</label>
+              <input 
+                type="number" 
+                min="0"
+                className="form-input" 
+                value={retentionDaysInput} 
+                onChange={(e) => setRetentionDaysInput(e.target.value)} 
+                placeholder="e.g. 7 (0 to keep indefinitely)"
+                required
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Number of days to keep video recordings. Older clips will be automatically deleted from disk to save space. Set to 0 to keep forever.
+              </span>
+            </div>
+
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Settings'}
               </button>
+            </div>
+
+            <div style={{ height: '1px', background: 'var(--border-light)', margin: '30px 0' }} />
+
+            <h3 style={{ fontSize: '18px', marginBottom: '12px', color: 'var(--primary)' }}>Backup & Restore Configuration</h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Export your cameras, system settings, and user accounts to a JSON file. This allows you to migrate servers easily.
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={handleExportConfig}
+                disabled={loading}
+              >
+                📥 Export Config File
+              </button>
+              
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', margin: 0 }}>
+                📤 Import Config File
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleImportConfig} 
+                  style={{ display: 'none' }} 
+                  disabled={loading}
+                />
+              </label>
             </div>
           </form>
         ) : activeTab === 'users' && currentUser?.role === 'admin' ? (

@@ -226,13 +226,30 @@ def list_events(camera_id: int = Query(None), limit: int = 100, current_user: di
 @app.get("/api/settings")
 def get_system_settings(current_user: dict = Depends(get_current_user)):
     return {
-        "app_title": database.get_system_setting("app_title") or "Antigravity NVR"
+        "app_title": database.get_system_setting("app_title") or "Antigravity NVR",
+        "retention_days": database.get_system_setting("retention_days") or "0"
     }
 
 @app.post("/api/settings")
 def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
     if "app_title" in data:
         database.set_system_setting("app_title", data["app_title"])
+    if "retention_days" in data:
+        database.set_system_setting("retention_days", str(data["retention_days"]))
+    return {"success": True}
+
+@app.get("/api/settings/backup")
+def backup_settings(admin: dict = Depends(require_admin)):
+    return database.export_config()
+
+@app.post("/api/settings/restore")
+def restore_settings(data: dict, admin: dict = Depends(require_admin)):
+    success, message = database.import_config(data)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    # Reload camera manager threads to load the imported configuration immediately
+    camera_manager.manager.stop_all()
+    camera_manager.manager.start_all()
     return {"success": True}
 
 # Authentication APIs

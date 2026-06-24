@@ -585,11 +585,18 @@ class CameraThread(threading.Thread):
 class CameraManager:
     def __init__(self):
         self.threads = {} # camera_id -> CameraThread
+        self.cleanup_running = False
+        self.cleanup_thread = None
         
     def start_all(self):
         cameras = database.get_cameras()
         for cam in cameras:
             self.start_camera(cam)
+            
+        # Start background storage cleanup worker
+        self.cleanup_running = True
+        self.cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
+        self.cleanup_thread.start()
             
     def start_camera(self, camera_info):
         camera_id = camera_info['id']
@@ -608,8 +615,57 @@ class CameraManager:
             del self.threads[camera_id]
             
     def stop_all(self):
+        self.cleanup_running = False
+        if self.cleanup_thread:
+            self.cleanup_thread.join(timeout=2)
+            self.cleanup_thread = None
+            
         for cid in list(self.threads.keys()):
             self.stop_camera(cid)
+            
+    def _cleanup_loop(self):
+        print("[Cleanup] Background storage cleanup worker started.")
+        # Initial sleep of 10s to allow startup/database operations to settle
+        time.sleep(10)
+        while self.cleanup_running:
+            try:
+                retention_days_str = database.get_system_setting("retention_days")
+                if retention_days_str:
+                    retention_days = int(retention_days_str)
+                    if retention_days > 0:
+                        self.prune_old_recordings(retention_days)
+            except Exception as e:
+                print(f"[Cleanup] Error in cleanup loop: {e}")
+                
+            # Sleep 1 hour, checking self.cleanup_running every 5 seconds to respond quickly to shutdown
+            for _ in range(720):
+                if not self.cleanup_running:
+                    break
+                time.sleep(5)
+        print("[Cleanup] Background storage cleanup worker stopped.")
+                
+    def prune_old_recordings(self, retention_days):
+        from datetime import datetime, timedelta
+        # Calculate cutoff time in ISO format
+        cutoff_time = (datetime.now() - timedelta(days=retention_days)).isoformat()
+        
+        expired = database.get_expired_recordings(cutoff_time)
+        if not expired:
+            return
+            
+        print(f"[Cleanup] Found {len(expired)} expired recordings older than {retention_days} days (cutoff: {cutoff_time[:19]}).")
+        for rec in expired:
+            # Delete from database
+            database.delete_recording(rec['id'])
+            
+            # Delete file on disk
+            filepath = os.path.join(RECORDINGS_DIR, rec['filepath'])
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    print(f"[Cleanup] Deleted expired recording file: {rec['filepath']}")
+                except Exception as e:
+                    print(f"[Cleanup] Error deleting file {filepath}: {e}")
             
     def reload_camera(self, camera_id):
         cam = database.get_camera(camera_id)

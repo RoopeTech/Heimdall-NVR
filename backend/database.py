@@ -156,6 +156,11 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO system_settings (key, value) VALUES ('app_title', 'Antigravity NVR')")
         conn.commit()
+        
+    cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = 'retention_days'")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO system_settings (key, value) VALUES ('retention_days', '0')")
+        conn.commit()
     
     # Insert default mock camera if database is brand new
     cursor.execute("SELECT COUNT(*) FROM cameras")
@@ -305,6 +310,82 @@ def get_recordings(camera_id=None, date_str=None):
     recordings = [dict(row) for row in conn.execute(query, params).fetchall()]
     conn.close()
     return recordings
+
+def get_expired_recordings(cutoff_time):
+    conn = get_db_connection()
+    expired = [dict(row) for row in conn.execute("SELECT id, filepath FROM recordings WHERE start_time < ?", (cutoff_time,)).fetchall()]
+    conn.close()
+    return expired
+
+def delete_recording(recording_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM recordings WHERE id = ?", (recording_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def export_config():
+    conn = get_db_connection()
+    cameras = [dict(row) for row in conn.execute("SELECT * FROM cameras").fetchall()]
+    settings = [dict(row) for row in conn.execute("SELECT * FROM system_settings").fetchall()]
+    users = [dict(row) for row in conn.execute("SELECT * FROM users").fetchall()]
+    conn.close()
+    return {
+        "cameras": cameras,
+        "system_settings": settings,
+        "users": users
+    }
+
+def import_config(config_data):
+    if not isinstance(config_data, dict):
+        return False, "Invalid backup file format"
+    if "cameras" not in config_data or "system_settings" not in config_data:
+        return False, "Backup file missing required configuration tables"
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # 1. Restore cameras
+        cursor.execute("DELETE FROM cameras")
+        for cam in config_data["cameras"]:
+            cursor.execute("""
+            INSERT INTO cameras (id, name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass, osd_enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                cam.get('id'), cam['name'], cam['main_url'], cam['sub_url'],
+                cam.get('ptz_ip'), cam.get('ptz_port'), cam.get('ptz_user'), cam.get('ptz_pass'),
+                cam.get('ptz_type', 'onvif'),
+                cam.get('motion_enabled', 1), cam.get('motion_sensitivity', 50),
+                cam.get('motion_threshold', 25), cam.get('pre_roll', 0), cam.get('post_roll', 5),
+                cam.get('record_mode', 'motion'),
+                cam.get('rtsp_user'), cam.get('rtsp_pass'),
+                cam.get('osd_enabled', 1)
+            ))
+            
+        # 2. Restore system settings
+        cursor.execute("DELETE FROM system_settings")
+        for setting in config_data["system_settings"]:
+            cursor.execute(
+                "INSERT INTO system_settings (key, value) VALUES (?, ?)",
+                (setting['key'], setting['value'])
+            )
+            
+        # 3. Restore users
+        if "users" in config_data and isinstance(config_data["users"], list) and len(config_data["users"]) > 0:
+            cursor.execute("DELETE FROM users")
+            for usr in config_data["users"]:
+                cursor.execute(
+                    "INSERT INTO users (id, username, password_hash, salt, role) VALUES (?, ?, ?, ?, ?)",
+                    (usr.get('id'), usr['username'], usr['password_hash'], usr['salt'], usr['role'])
+                )
+        conn.commit()
+        return True, "Success"
+    except Exception as e:
+        conn.rollback()
+        return False, f"Database import error: {str(e)}"
+    finally:
+        conn.close()
 
 # Events Operations
 def log_event(camera_id, event_type, details=None):
