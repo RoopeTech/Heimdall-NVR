@@ -674,3 +674,148 @@
 .range-slider::-webkit-slider-thumb:hover {
   transform: scale(1.2);
 }
+
+/* ==========================================================================
+   Responsive / Mobile Friendliness Enhancements
+   ========================================================================== */
+
+/* Login Card styling */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* Settings Form Grid default (desktop) */
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Mobile Media Queries (up to 850px for modals / detail layouts) */
+@media (max-width: 850px) {
+  .modal-overlay {
+    padding: 8px;
+  }
+  
+  .modal-content {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    height: 95vh !important;
+    max-height: 95vh !important;
+    min-width: 100% !important;
+    min-height: auto !important;
+    overflow-y: auto !important;
+    resize: none !important;
+    gap: 16px !important;
+  }
+
+  .modal-header {
+    grid-column: span 1 !important;
+    padding: 12px 16px !important;
+  }
+
+  .modal-body-left {
+    padding: 12px !important;
+    overflow: visible !important;
+    gap: 12px !important;
+  }
+
+  .modal-body-right {
+    padding: 12px !important;
+    overflow: visible !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border-light) !important;
+  }
+
+  .modal-body-left .camera-stream-container {
+    min-height: 240px !important;
+    height: auto !important;
+    aspect-ratio: 16/9;
+  }
+}
+
+/* Smartphone / Narrow screens (up to 768px for app wrapper & headers) */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    align-items: stretch !important;
+    height: auto !important;
+  }
+
+  .logo-container {
+    justify-content: center !important;
+  }
+
+  .nav-tabs {
+    width: 100% !important;
+    justify-content: space-around !important;
+    overflow-x: auto !important;
+  }
+
+  .nav-tab {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    flex: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  /* Profile Pill & Stats wrapper */
+  .app-header > div:last-child {
+    width: 100% !important;
+    justify-content: space-between !important;
+    margin-top: 4px !important;
+  }
+
+  .view-container {
+    padding: 16px 12px !important;
+  }
+
+  .dashboard-grid {
+    padding: 12px 8px !important;
+    gap: 16px !important;
+  }
+
+  .settings-grid {
+    gap: 16px !important;
+  }
+
+  .settings-content-card {
+    padding: 16px !important;
+  }
+}
+
+/* Form layout adjustment for vertical stacking on narrow viewports */
+@media (max-width: 600px) {
+  .settings-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .settings-form-grid > .form-group {
+    grid-column: span 1 !important;
+  }
+
+  .login-card {
+    padding: 24px 16px !important;
+  }
+
+  /* Hide intermediate hour marks on timeline to prevent crowding */
+  .ruler-tick-label {
+    display: none !important;
+  }
+  .ruler-tick-label.hr-0,
+  .ruler-tick-label.hr-6,
+  .ruler-tick-label.hr-12,
+  .ruler-tick-label.hr-18,
+  .ruler-tick-label.hr-24 {
+    display: block !important;
+  }
+}

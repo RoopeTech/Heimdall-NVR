@@ -42,14 +42,7 @@ export default function Login({ appTitle, onLoginSuccess }) {
       background: 'radial-gradient(circle at 50% 0%, #111a30 0%, #060913 70%)',
       padding: '20px',
     }}>
-      <div className="glass-panel fade-in" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '40px',
-        textAlign: 'center',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
-      }}>
+      <div className="glass-panel fade-in login-card">
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📹</div>
         <h1 style={{
           fontSize: '28px',

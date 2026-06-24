@@ -97,7 +97,7 @@ export default function Timeline({ recordings, selectedDate, onPlayRecording, cu
               />
               {hr < 24 && (
                 <div 
-                  className="ruler-tick-label" 
+                  className={`ruler-tick-label hr-${hr}`} 
                   style={{ left: `${pct}%` }}
                 >
                   {String(hr).padStart(2, '0')}:00

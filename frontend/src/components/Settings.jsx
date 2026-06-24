@@ -467,7 +467,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   {editingUser ? `Configure User: ${editingUser.username}` : 'Add User Account'}
                 </h2>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="settings-form-grid">
                   <div className="form-group">
                     <label className="form-label">Username</label>
                     <input 
@@ -560,7 +560,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
               {editingCamera ? `Configure ${editingCamera.name}` : 'Add Camera Device'}
             </h2>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="settings-form-grid">
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Camera Name</label>
                 <input 
