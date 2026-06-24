@@ -16,6 +16,10 @@ if (-not $isAdmin) {
     Write-Host ""
 }
 
+# Set project root folder path
+$ProjectRoot = $PSScriptRoot
+if (-not $ProjectRoot) { $ProjectRoot = Get-Location }
+
 # Function to check and install a tool using winget
 function Ensure-Tool {
     param(
@@ -27,10 +31,20 @@ function Ensure-Tool {
     Write-Host "[*] Checking for $Name..." -NoNewline
     $path = Get-Command $Command -ErrorAction SilentlyContinue
     
+    # Also check local bin directory for FFmpeg
+    $localBinDir = Join-Path $ProjectRoot "backend\bin"
+    if ($Name -eq "FFmpeg" -and -not $path) {
+        $localFfmpeg = Join-Path $localBinDir "ffmpeg.exe"
+        if (Test-Path $localFfmpeg) {
+            $path = [PSCustomObject]@{ Source = $localFfmpeg }
+        }
+    }
+    
     if ($path) {
         Write-Host " Found: $($path.Source)" -ForegroundColor Green
     } else {
         Write-Host " Not found. Installing $Name via winget..." -ForegroundColor Yellow
+        $installed = $false
         try {
             # Run winget installer
             Start-Process winget -ArgumentList "install -e --id $WingetId --silent --accept-package-agreements --accept-source-agreements" -NoNewWindow -Wait
@@ -41,10 +55,51 @@ function Ensure-Tool {
             $path = Get-Command $Command -ErrorAction SilentlyContinue
             if ($path) {
                 Write-Host "[+] Successfully installed $Name!" -ForegroundColor Green
-            } else {
-                throw "Installation completed but '$Command' is still not found in PATH. You may need to restart your computer."
+                $installed = $true
             }
         } catch {
+            # Ignore error and try fallback
+        }
+        
+        if (-not $installed) {
+            if ($Name -eq "FFmpeg") {
+                Write-Host "[*] Winget failed. Attempting to download static FFmpeg build directly..." -ForegroundColor Yellow
+                try {
+                    if (-not (Test-Path $localBinDir)) { New-Item -ItemType Directory -Path $localBinDir | Out-Null }
+                    
+                    $ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+                    $ZipPath = Join-Path $env:TEMP "ffmpeg.zip"
+                    
+                    Write-Host "[*] Downloading FFmpeg zip (about 100MB, this may take a moment)..." -ForegroundColor Gray
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    Invoke-WebRequest -Uri $ZipUrl -OutFile $ZipPath -UseBasicParsing
+                    
+                    Write-Host "[*] Extracting FFmpeg..." -ForegroundColor Gray
+                    $ExtractPath = Join-Path $env:TEMP "ffmpeg_extracted"
+                    if (Test-Path $ExtractPath) { Remove-Item -Recurse -Force $ExtractPath }
+                    Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath
+                    
+                    $FFmpegExe = Get-ChildItem -Path $ExtractPath -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+                    if ($FFmpegExe) {
+                        Copy-Item -Path $FFmpegExe.FullName -Destination (Join-Path $localBinDir "ffmpeg.exe") -Force
+                        $FFprobeExe = Get-ChildItem -Path $ExtractPath -Filter "ffprobe.exe" -Recurse | Select-Object -First 1
+                        if ($FFprobeExe) {
+                            Copy-Item -Path $FFprobeExe.FullName -Destination (Join-Path $localBinDir "ffprobe.exe") -Force
+                        }
+                        Write-Host "[+] Successfully downloaded and set up local FFmpeg in backend/bin!" -ForegroundColor Green
+                        
+                        # Cleanup temp files
+                        Remove-Item -Path $ZipPath -Force
+                        Remove-Item -Recurse -Force $ExtractPath
+                        return
+                    } else {
+                        throw "ffmpeg.exe not found in extracted archive"
+                    }
+                } catch {
+                    Write-Host "[-] Direct download fallback failed: $_" -ForegroundColor Red
+                }
+            }
+            
             Write-Host "[-] Failed to install $Name automatically. Please install it manually from the official website." -ForegroundColor Red
             Write-Host "    Link: https://apps.microsoft.com/detail/9nblggh4nbfm (or search for it)" -ForegroundColor Gray
             exit 1
