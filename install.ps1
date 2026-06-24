@@ -67,7 +67,7 @@ function Ensure-Tool {
                 try {
                     if (-not (Test-Path $localBinDir)) { New-Item -ItemType Directory -Path $localBinDir | Out-Null }
                     
-                    $ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+                    $ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip"
                     $ZipPath = Join-Path $env:TEMP "ffmpeg.zip"
                     
                     Write-Host "[*] Downloading FFmpeg zip (about 100MB, this may take a moment)..." -ForegroundColor Gray
