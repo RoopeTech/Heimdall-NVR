@@ -1,0 +1,5 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+opencv-python-headless>=4.8.0.74
+requests>=2.31.0
+pywebview>=4.2.2

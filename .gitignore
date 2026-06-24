@@ -1,0 +1,30 @@
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Production builds
+frontend/dist/
+
+# Python Virtual Environment
+backend/venv/
+__pycache__/
+*/__pycache__/
+*.pyc
+
+# Local Database & Logs
+backend/nvr.db
+nvr.log
+*.log
+
+# Video recordings (NVR clips)
+recordings/
+backend/recordings/
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
