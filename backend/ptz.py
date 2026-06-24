@@ -141,3 +141,65 @@ def send_onvif_ptz(ip, port, username, password, action, x=0.0, y=0.0, z=0.0, pr
     except Exception as e:
         print(f"Error sending PTZ command: {e}")
         return False
+
+def send_foscam_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0, z=0.0):
+    # ptz_type is either 'foscam_cgi' (old) or 'foscam_hd' (CGIProxy)
+    # action is either "move" or "stop"
+    
+    if ptz_type == "foscam_cgi":
+        cmd = None
+        if action == "move":
+            # Command mapping: 0=up, 2=down, 4=left, 6=right
+            if y > 0.1: cmd = 0
+            elif y < -0.1: cmd = 2
+            elif x < -0.1: cmd = 4
+            elif x > 0.1: cmd = 6
+        elif action == "stop":
+            # Stop command: 1 (stops up/down), 5 (stops left/right)
+            url_stop_pt = f"http://{ip}:{port}/decoder_control.cgi?command=1&usr={username}&pwd={password}"
+            url_stop_lr = f"http://{ip}:{port}/decoder_control.cgi?command=5&usr={username}&pwd={password}"
+            try:
+                requests.get(url_stop_pt, timeout=3)
+                requests.get(url_stop_lr, timeout=3)
+                return True
+            except Exception as e:
+                print(f"Foscam CGI Stop Error: {e}")
+                return False
+                
+        if cmd is not None:
+            url = f"http://{ip}:{port}/decoder_control.cgi?command={cmd}&usr={username}&pwd={password}"
+            try:
+                res = requests.get(url, timeout=3)
+                return res.status_code == 200
+            except Exception as e:
+                print(f"Foscam CGI Move Error: {e}")
+                return False
+                
+    elif ptz_type == "foscam_hd":
+        cmd_str = None
+        if action == "move":
+            if y > 0.1: cmd_str = "ptzMoveUp"
+            elif y < -0.1: cmd_str = "ptzMoveDown"
+            elif x < -0.1: cmd_str = "ptzMoveLeft"
+            elif x > 0.1: cmd_str = "ptzMoveRight"
+            elif z > 1.1: cmd_str = "zoomIn"
+            elif z < 0.9: cmd_str = "zoomOut"
+        elif action == "stop":
+            cmd_str = "ptzStopRun"
+            
+        if cmd_str:
+            url = f"http://{ip}:{port}/cgi-bin/CGIProxy.fcgi?cmd={cmd_str}&usr={username}&pwd={password}"
+            try:
+                res = requests.get(url, timeout=3)
+                return res.status_code == 200
+            except Exception as e:
+                print(f"Foscam HD PTZ Error: {e}")
+                return False
+                
+    return False
+
+def send_ptz(ip, port, username, password, ptz_type, action, x=0.0, y=0.0, z=0.0):
+    if not ptz_type or ptz_type == "onvif":
+        return send_onvif_ptz(ip, port, username, password, action, x, y, z)
+    else:
+        return send_foscam_ptz(ip, port, username, password, ptz_type, action, x, y, z)

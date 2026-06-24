@@ -12,6 +12,7 @@ export default function Settings({ cameras, onReload }) {
   const [ptzPort, setPtzPort] = useState(80);
   const [ptzUser, setPtzUser] = useState('');
   const [ptzPass, setPtzPass] = useState('');
+  const [ptzType, setPtzType] = useState('onvif');
   const [motionEnabled, setMotionEnabled] = useState(true);
   const [sensitivity, setSensitivity] = useState(50);
   const [threshold, setThreshold] = useState(25);
@@ -42,6 +43,7 @@ export default function Settings({ cameras, onReload }) {
     setPtzPort(cam.ptz_port || 80);
     setPtzUser(cam.ptz_user || '');
     setPtzPass(cam.ptz_pass || '');
+    setPtzType(cam.ptz_type || 'onvif');
     setMotionEnabled(cam.motion_enabled === 1);
     setSensitivity(cam.motion_sensitivity);
     setThreshold(cam.motion_threshold);
@@ -59,6 +61,7 @@ export default function Settings({ cameras, onReload }) {
     setPtzPort(80);
     setPtzUser('');
     setPtzPass('');
+    setPtzType('onvif');
     setMotionEnabled(true);
     setSensitivity(50);
     setThreshold(25);
@@ -84,6 +87,7 @@ export default function Settings({ cameras, onReload }) {
       ptz_port: parseInt(ptzPort) || null,
       ptz_user: ptzUser || null,
       ptz_pass: ptzPass || null,
+      ptz_type: ptzType,
       motion_enabled: motionEnabled ? 1 : 0,
       motion_sensitivity: parseInt(sensitivity),
       motion_threshold: parseInt(threshold),
@@ -258,7 +262,23 @@ export default function Settings({ cameras, onReload }) {
               <div style={{ gridColumn: 'span 2', height: '1px', background: 'var(--border-light)', margin: '10px 0' }} />
 
               <div style={{ gridColumn: 'span 2' }}>
-                <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>PTZ Controls Configuration (Optional ONVIF)</h3>
+                <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>PTZ Controls Configuration (Optional)</h3>
+              </div>
+
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">PTZ Protocol / Type</label>
+                <select 
+                  className="form-input" 
+                  value={ptzType} 
+                  onChange={(e) => setPtzType(e.target.value)}
+                >
+                  <option value="onvif">ONVIF (Standard)</option>
+                  <option value="foscam_cgi">Foscam CGI (Old models, decoder_control.cgi)</option>
+                  <option value="foscam_hd">Foscam HD (Newer models, CGIProxy.fcgi)</option>
+                </select>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Choose ONVIF for standard cameras, or Foscam CGI/HD depending on your Boavision/Foscam compatible camera settings.
+                </span>
               </div>
 
               <div className="form-group">

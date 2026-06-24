@@ -24,6 +24,7 @@ def init_db():
         ptz_port INTEGER,
         ptz_user TEXT,
         ptz_pass TEXT,
+        ptz_type TEXT DEFAULT 'onvif',        -- 'onvif' | 'foscam_cgi' | 'foscam_hd'
         motion_enabled INTEGER DEFAULT 1,
         motion_sensitivity INTEGER DEFAULT 50, -- 1-100 (smaller = more sensitive / lower area threshold)
         motion_threshold INTEGER DEFAULT 25,   -- 1-100 (pixel intensity diff threshold)
@@ -31,6 +32,13 @@ def init_db():
         post_roll INTEGER DEFAULT 5            -- in seconds
     )
     """)
+    
+    # Migration: add ptz_type to existing databases
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN ptz_type TEXT DEFAULT 'onvif'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
     
     # Create recordings table
     cursor.execute("""
@@ -63,8 +71,8 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM cameras")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, motion_enabled, motion_sensitivity, motion_threshold)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "Mock Camera 1",
             "mock://camera1_main",
@@ -73,6 +81,7 @@ def init_db():
             80,
             "admin",
             "admin",
+            "onvif",
             1,
             50,
             25
@@ -98,11 +107,12 @@ def add_camera(camera_data):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
         camera_data.get('ptz_ip'), camera_data.get('ptz_port'), camera_data.get('ptz_user'), camera_data.get('ptz_pass'),
+        camera_data.get('ptz_type', 'onvif'),
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
         camera_data.get('motion_threshold', 25), camera_data.get('pre_roll', 0), camera_data.get('post_roll', 5)
     ))
@@ -116,12 +126,13 @@ def update_camera(camera_id, camera_data):
     cursor = conn.cursor()
     cursor.execute("""
     UPDATE cameras
-    SET name=?, main_url=?, sub_url=?, ptz_ip=?, ptz_port=?, ptz_user=?, ptz_pass=?,
+    SET name=?, main_url=?, sub_url=?, ptz_ip=?, ptz_port=?, ptz_user=?, ptz_pass=?, ptz_type=?,
         motion_enabled=?, motion_sensitivity=?, motion_threshold=?, pre_roll=?, post_roll=?
     WHERE id=?
     """, (
         camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
         camera_data.get('ptz_ip'), camera_data.get('ptz_port'), camera_data.get('ptz_user'), camera_data.get('ptz_pass'),
+        camera_data.get('ptz_type', 'onvif'),
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
         camera_data.get('motion_threshold', 25), camera_data.get('pre_roll', 0), camera_data.get('post_roll', 5),
         camera_id

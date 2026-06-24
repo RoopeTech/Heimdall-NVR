@@ -467,15 +467,16 @@ class CameraThread(threading.Thread):
             self.mock_cap.update_ptz(pan, tilt, zoom)
             return True
         else:
-            # Real camera ONVIF PTZ command
+            # Route based on camera configuration (ONVIF or Foscam HTTP)
             db_cam = database.get_camera(self.camera_id)
             if db_cam and db_cam['ptz_ip']:
                 import ptz
-                return ptz.send_onvif_ptz(
+                return ptz.send_ptz(
                     db_cam['ptz_ip'],
                     db_cam['ptz_port'] or 80,
                     db_cam['ptz_user'] or "",
                     db_cam['ptz_pass'] or "",
+                    db_cam.get('ptz_type', 'onvif'),
                     "move",
                     x=pan, y=tilt, z=zoom
                 )
@@ -490,11 +491,12 @@ class CameraThread(threading.Thread):
             db_cam = database.get_camera(self.camera_id)
             if db_cam and db_cam['ptz_ip']:
                 import ptz
-                return ptz.send_onvif_ptz(
+                return ptz.send_ptz(
                     db_cam['ptz_ip'],
                     db_cam['ptz_port'] or 80,
                     db_cam['ptz_user'] or "",
                     db_cam['ptz_pass'] or "",
+                    db_cam.get('ptz_type', 'onvif'),
                     "stop"
                 )
         return False
