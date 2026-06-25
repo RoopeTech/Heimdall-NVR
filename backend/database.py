@@ -138,7 +138,27 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )
     """)
-    
+
+    # Create camera_groups table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS camera_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        sort_order INTEGER DEFAULT 0
+    )
+    """)
+
+    # Create camera_group_members table (many-to-many)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS camera_group_members (
+        group_id INTEGER NOT NULL,
+        camera_id INTEGER NOT NULL,
+        PRIMARY KEY (group_id, camera_id),
+        FOREIGN KEY (group_id) REFERENCES camera_groups (id) ON DELETE CASCADE,
+        FOREIGN KEY (camera_id) REFERENCES cameras (id) ON DELETE CASCADE
+    )
+    """)
+
     conn.commit()
 
     # Seed default admin user
@@ -185,7 +205,58 @@ def init_db():
         
     conn.close()
 
-# Camera CRUD Operations
+# ── Camera Group CRUD ──────────────────────────────────────────────────────────
+
+def get_groups():
+    """Return all groups with their member camera IDs."""
+    conn = get_db_connection()
+    groups = [dict(row) for row in conn.execute(
+        "SELECT * FROM camera_groups ORDER BY sort_order, name"
+    ).fetchall()]
+    for g in groups:
+        rows = conn.execute(
+            "SELECT camera_id FROM camera_group_members WHERE group_id = ?",
+            (g['id'],)
+        ).fetchall()
+        g['camera_ids'] = [r['camera_id'] for r in rows]
+    conn.close()
+    return groups
+
+def add_group(name: str) -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO camera_groups (name) VALUES (?)", (name,))
+    conn.commit()
+    gid = cursor.lastrowid
+    conn.close()
+    return gid
+
+def update_group(group_id: int, name: str):
+    conn = get_db_connection()
+    conn.execute("UPDATE camera_groups SET name = ? WHERE id = ?", (name, group_id))
+    conn.commit()
+    conn.close()
+
+def delete_group(group_id: int):
+    conn = get_db_connection()
+    # ON DELETE CASCADE handles camera_group_members cleanup
+    conn.execute("DELETE FROM camera_groups WHERE id = ?", (group_id,))
+    conn.commit()
+    conn.close()
+
+def set_group_members(group_id: int, camera_ids: list):
+    """Replace all camera members for a group."""
+    conn = get_db_connection()
+    conn.execute("DELETE FROM camera_group_members WHERE group_id = ?", (group_id,))
+    for cid in camera_ids:
+        conn.execute(
+            "INSERT OR IGNORE INTO camera_group_members (group_id, camera_id) VALUES (?, ?)",
+            (group_id, cid)
+        )
+    conn.commit()
+    conn.close()
+
+# ── Camera CRUD Operations ─────────────────────────────────────────────────────
 def get_cameras():
     conn = get_db_connection()
     cameras = [dict(row) for row in conn.execute("SELECT * FROM cameras").fetchall()]

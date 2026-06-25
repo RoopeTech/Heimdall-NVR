@@ -94,29 +94,37 @@
   cursor: pointer;
 }
 
+/* Live View Grid — flex-wrap so resize:both works per-tile */
 .cameras-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   margin-bottom: 24px;
+  align-items: flex-start;
 }
 
-.grid-layout-1 { grid-template-columns: 1fr; }
-.grid-layout-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-layout-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-layout-4 { grid-template-columns: repeat(2, 1fr); } /* 2x2 grid */
+/* Layout presets — set the initial tile width; users can drag to resize */
+.grid-layout-1 .camera-card  { width: 100%; }
+.grid-layout-2 .camera-card  { width: calc(50% - 10px); }
+.grid-layout-3 .camera-card  { width: calc(33.33% - 14px); }
+.grid-layout-4 .camera-card  { width: calc(50% - 10px); }
 
 @media (max-width: 900px) {
-  .cameras-grid {
-    grid-template-columns: 1fr !important;
+  .cameras-grid .camera-card {
+    width: 100% !important;
   }
 }
 
-/* Camera Card */
+/* Camera Card — flex column + user-resizable */
 .camera-card {
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Allow the user to drag-resize via the native handle */
+  resize: both;
+  min-width: 220px;
+  min-height: 200px;
 }
 
 .camera-card-header {
@@ -154,12 +162,15 @@
   to { opacity: 1; }
 }
 
+/* Stream container — flex:1 fills whatever height the resized card gives it */
 .camera-stream-container {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+  flex: 1;
+  min-height: 140px;
   background: #000;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .camera-stream-img {
@@ -240,19 +251,31 @@
 }
 
 .modal-content {
-  width: 90vw;
-  height: 85vh;
-  max-width: 95vw;
-  max-height: 95vh;
+  width: 96vw;
+  height: 92vh;
+  max-width: 96vw;
+  max-height: 92vh;
   min-width: 800px;
-  min-height: 500px;
+  min-height: 520px;
   display: grid;
-  grid-template-columns: 2.2fr 1fr;
+  grid-template-columns: 2.4fr 1fr;
   grid-template-rows: auto 1fr;
-  gap: 24px;
+  gap: 0;
   overflow: hidden;
   resize: both;
   position: relative;
+  transition: grid-template-columns 0.3s ease;
+}
+
+/* Theatre mode — right panel collapses, video fills the space */
+.modal-content.theatre-mode {
+  grid-template-columns: 1fr 0;
+}
+.modal-content.theatre-mode .modal-body-right {
+  display: none;
+}
+.modal-content.theatre-mode .modal-header {
+  grid-column: span 1;
 }
 
 @media (max-width: 850px) {
@@ -902,3 +925,137 @@
   }
 }
 
+/* ─── Camera Group Filter Bar ────────────────────────────────────────────────── */
+.group-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.group-chip:hover {
+  border-color: var(--primary);
+  color: var(--text-primary);
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.group-chip.active {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.2);
+}
+
+.group-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.group-chip.active .group-chip-count {
+  background: rgba(14, 165, 233, 0.25);
+}
+
+/* ─── Theatre Mode Button (in modal header) ──────────────────────────────────── */
+.btn-theatre {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+}
+
+.btn-theatre:hover, .btn-theatre.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+/* ─── Camera Settings: Groups Panel ─────────────────────────────────────────── */
+.groups-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group-item {
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.group-item:hover {
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.group-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-camera-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.group-camera-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.group-camera-checkbox.checked {
+  border-color: var(--primary);
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--text-primary);
+}
+
+.group-camera-checkbox input[type="checkbox"] {
+  display: none;
+}

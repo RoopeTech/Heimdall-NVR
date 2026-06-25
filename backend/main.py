@@ -149,6 +149,38 @@ async def get_snapshot(camera_id: int, current_user: dict = Depends(get_current_
         }
     )
 
+# ── Camera Group Endpoints ────────────────────────────────────────────────────
+
+@app.get("/api/groups")
+def list_groups(current_user: dict = Depends(get_current_user)):
+    return database.get_groups()
+
+@app.post("/api/groups")
+def create_group(data: dict, current_user: dict = Depends(require_admin)):
+    name = data.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Group name required")
+    try:
+        gid = database.add_group(name)
+    except Exception:
+        raise HTTPException(status_code=409, detail="Group name already exists")
+    return {"id": gid, "name": name, "camera_ids": []}
+
+@app.put("/api/groups/{group_id}")
+def update_group(group_id: int, data: dict, current_user: dict = Depends(require_admin)):
+    name = data.get("name", "").strip()
+    camera_ids = data.get("camera_ids", None)
+    if name:
+        database.update_group(group_id, name)
+    if camera_ids is not None:
+        database.set_group_members(group_id, camera_ids)
+    return {"ok": True}
+
+@app.delete("/api/groups/{group_id}")
+def delete_group(group_id: int, current_user: dict = Depends(require_admin)):
+    database.delete_group(group_id)
+    return {"ok": True}
+
 # PTZ Control Endpoint
 @app.post("/api/cameras/{camera_id}/ptz")
 def ptz_control(camera_id: int, data: dict, current_user: dict = Depends(get_current_user)):

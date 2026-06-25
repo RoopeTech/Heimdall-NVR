@@ -14,6 +14,127 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [editingUser, setEditingUser] = useState(null);
   const [showUserForm, setShowUserForm] = useState(false);
 
+  // Camera Groups State
+  const [groups, setGroups] = useState([]);
+  const [newGroupName, setNewGroupName] = useState('');
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/api/groups', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data);
+      }
+    } catch (err) {
+      console.error('Error fetching groups:', err);
+    }
+  };
+
+  const handleAddGroup = async (e) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newGroupName.trim() })
+      });
+      if (response.ok) {
+        setSuccess(`Group "${newGroupName.trim()}" created successfully!`);
+        setNewGroupName('');
+        fetchGroups();
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Failed to create group.');
+      }
+    } catch (err) {
+      setError('Network error creating group.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveGroup = async (group) => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch(`/api/groups/${group.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: group.name,
+          camera_ids: group.camera_ids
+        })
+      });
+      if (response.ok) {
+        setSuccess(`Group "${group.name}" updated successfully!`);
+        fetchGroups();
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Failed to save group.');
+      }
+    } catch (err) {
+      setError('Network error saving group.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteGroup = async (id, name) => {
+    if (!confirm(`Are you sure you want to delete the camera group "${name}"?`)) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await fetch(`/api/groups/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        setSuccess(`Group "${name}" deleted successfully.`);
+        fetchGroups();
+      } else {
+        const data = await response.json();
+        setError(data.detail || 'Failed to delete group.');
+      }
+    } catch (err) {
+      setError('Network error deleting group.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGroupNameChange = (id, newName) => {
+    setGroups(groups.map(g => g.id === id ? { ...g, name: newName } : g));
+  };
+
+  const handleGroupCameraToggle = (groupId, cameraId) => {
+    setGroups(groups.map(g => {
+      if (g.id === groupId) {
+        const exists = g.camera_ids?.includes(cameraId) || false;
+        const newIds = exists 
+          ? g.camera_ids.filter(id => id !== cameraId)
+          : [...(g.camera_ids || []), cameraId];
+        return { ...g, camera_ids: newIds };
+      }
+      return g;
+    }));
+  };
+
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/users', {
@@ -31,6 +152,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   useEffect(() => {
     if (activeTab === 'users' && currentUser?.role === 'admin') {
       fetchUsers();
+    }
+    if (activeTab === 'groups' && currentUser?.role === 'admin') {
+      fetchGroups();
     }
   }, [activeTab]);
 
@@ -516,6 +640,17 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             👤 User Accounts
           </button>
         )}
+        {currentUser?.role === 'admin' && (
+          <button 
+            className={`settings-nav-btn ${activeTab === 'groups' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('groups');
+              fetchGroups();
+            }}
+          >
+            🎯 Camera Groups
+          </button>
+        )}
         {activeTab === 'form' && editingCamera && (
           <button className="settings-nav-btn active">
             📝 Edit: {editingCamera.name}
@@ -801,6 +936,87 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 </button>
               </div>
             )}
+          </div>
+        ) : activeTab === 'groups' && currentUser?.role === 'admin' ? (
+          <div>
+            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Camera Groups</h2>
+            
+            <form onSubmit={handleAddGroup} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                style={{ flex: 1, maxWidth: '300px' }} 
+                placeholder="New Group Name" 
+                value={newGroupName} 
+                onChange={(e) => setNewGroupName(e.target.value)} 
+                required
+              />
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                Create Group
+              </button>
+            </form>
+
+            <div className="groups-panel">
+              {groups.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  No camera groups created yet. Use the field above to add one.
+                </div>
+              ) : (
+                groups.map((group) => (
+                  <div key={group.id} className="group-item">
+                    <div className="group-item-header">
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        style={{ flex: 1, maxWidth: '280px', fontWeight: '600' }} 
+                        value={group.name} 
+                        onChange={(e) => handleGroupNameChange(group.id, e.target.value)} 
+                        placeholder="Group Name"
+                        required
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-primary" 
+                          onClick={() => handleSaveGroup(group)}
+                          disabled={loading}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-danger" 
+                          onClick={() => handleDeleteGroup(group.id, group.name)}
+                          disabled={loading}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                      Assign Cameras to Group:
+                    </div>
+                    
+                    <div className="group-camera-checkboxes">
+                      {cameras.map((cam) => {
+                        const isChecked = group.camera_ids?.includes(cam.id) || false;
+                        return (
+                          <label key={cam.id} className={`group-camera-checkbox ${isChecked ? 'checked' : ''}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked} 
+                              onChange={() => handleGroupCameraToggle(group.id, cam.id)}
+                            />
+                            <span>{cam.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSave}>

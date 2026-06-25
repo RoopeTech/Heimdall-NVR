@@ -100,6 +100,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null);
   const [mockMotionActive, setMockMotionActive] = useState(true);
   const [cameraEvents, setCameraEvents] = useState([]);
+  const [theatreMode, setTheatreMode] = useState(false);
   const videoRef = useRef(null);
 
   const isMock = camera.sub_url.startsWith('mock://');
@@ -352,7 +353,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content glass-panel glow-blue">
+      <div className={`modal-content glass-panel glow-blue${theatreMode ? ' theatre-mode' : ''}`}>
         <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div className={`camera-status-dot ${playbackMode ? '' : (camera.motion_enabled ? 'recording' : '')}`} />
@@ -360,9 +361,16 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
               {camera.name} {playbackMode ? '(Playback)' : '(Live Grid)'}
             </h2>
           </div>
-          <button className="btn btn-secondary btn-icon" onClick={onClose} style={{ fontSize: '20px' }}>
-            ✕
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className={`btn-theatre${theatreMode ? ' active' : ''}`}
+              onClick={() => setTheatreMode(t => !t)}
+              title={theatreMode ? 'Exit Theatre Mode' : 'Theatre Mode — expand video'}
+            >
+              {theatreMode ? '⊡ Exit Theatre' : '⛶ Theatre Mode'}
+            </button>
+            <button className="btn btn-secondary btn-icon" onClick={onClose} style={{ fontSize: '20px' }}>✕</button>
+          </div>
         </div>
 
         {/* Left Side: Video Player & Timeline */}
