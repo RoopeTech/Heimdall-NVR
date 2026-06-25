@@ -203,6 +203,8 @@ class CameraThread(threading.Thread):
         self.latest_stream_frame = None # Frame with motion boxes drawn for viewing
         self.latest_jpeg_bytes = None
         self.last_jpeg_time = 0
+        self.consecutive_failures = 0
+        self._generate_connecting_placeholder()
         
         # Motion state
         self.is_motion_detected = False
@@ -243,6 +245,7 @@ class CameraThread(threading.Thread):
                 cap = cv2.VideoCapture(auth_sub_url)
                 if not cap.isOpened():
                     print(f"[{self.name}] Failed to open sub-stream: {self.sub_url}. Retrying in 10s...")
+                    self._draw_reconnecting_overlay()
                     time.sleep(10)
                     continue
                     
@@ -258,6 +261,7 @@ class CameraThread(threading.Thread):
             last_motion_time = time.time()
             motion_boxes = []
             motion_detected_this_frame = False
+            self.consecutive_failures = 0
             
             while self.running:
                 try:
@@ -269,8 +273,16 @@ class CameraThread(threading.Thread):
                             time.sleep(0.05) # Mock capture frame rate throttling
                             continue
                         else:
-                            print(f"[{self.name}] Stream connection lost. Reconnecting...")
-                            break
+                            self.consecutive_failures += 1
+                            if self.consecutive_failures >= 15: # Allow ~0.5s of frame drops
+                                print(f"[{self.name}] Stream connection lost (15 consecutive failures). Reconnecting...")
+                                self.consecutive_failures = 0
+                                self._draw_reconnecting_overlay()
+                                break
+                            time.sleep(0.03) # brief sleep before next read attempt
+                            continue
+                    else:
+                        self.consecutive_failures = 0
                     
                     # Keep copy of raw frame
                     self.latest_frame = frame.copy()
@@ -553,6 +565,46 @@ class CameraThread(threading.Thread):
             
         self.recording_id = None
         self.record_filepath = None
+
+    def _generate_connecting_placeholder(self):
+        try:
+            placeholder = np.zeros((360, 640, 3), dtype=np.uint8)
+            placeholder[:] = (20, 15, 10) # Dark cyberpunk background
+            
+            # Draw camera name and status
+            cv2.putText(placeholder, f"{self.name}", (40, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 242, 254), 2, cv2.LINE_AA)
+            cv2.putText(placeholder, "Connecting to RTSP stream...", (40, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1, cv2.LINE_AA)
+            
+            ret, jpeg = cv2.imencode('.jpg', placeholder)
+            if ret:
+                self.latest_jpeg_bytes = jpeg.tobytes()
+        except Exception:
+            pass
+
+    def _draw_reconnecting_overlay(self):
+        try:
+            if self.latest_stream_frame is not None:
+                reconnect_frame = self.latest_stream_frame.copy()
+                h, w = reconnect_frame.shape[:2]
+                
+                # Draw a dark overlay banner at the bottom
+                cv2.rectangle(reconnect_frame, (0, h - 45), (w, h), (10, 15, 20), -1)
+                cv2.putText(reconnect_frame, "⚠️ Connection lost. Reconnecting...", (20, h - 15), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1, cv2.LINE_AA)
+                
+                # Keep aspect ratio but limit width to 640px to reduce CPU and bandwidth load
+                if w > 640:
+                    scale = 640.0 / w
+                    nh, nw = int(h * scale), 640
+                    reconnect_frame = cv2.resize(reconnect_frame, (nw, nh))
+                    
+                ret, jpeg = cv2.imencode('.jpg', reconnect_frame)
+                if ret:
+                    self.latest_jpeg_bytes = jpeg.tobytes()
+            else:
+                self._generate_connecting_placeholder()
+        except Exception:
+            pass
 
     def ptz_move(self, pan, tilt, zoom):
         if self.is_mock and self.mock_cap:
