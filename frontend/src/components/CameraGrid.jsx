@@ -1,86 +1,105 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
- * MjpegStream — An <img> wrapper for MJPEG streams that automatically reconnects
- * if the stream fails or goes silent. On error it waits `retryDelay` ms then
- * reloads with a fresh timestamp to bust any stale connection.
+ * CameraStream — polls /api/cameras/{id}/snapshot every POLL_MS milliseconds.
+ *
+ * Why polling instead of MJPEG <img>?
+ *   - MJPEG fires onLoad as soon as HTTP connects, before any frame arrives,
+ *     so a black/blank stream looks identical to a working one.
+ *   - fetch() returns a real HTTP status each call, so we know exactly when
+ *     the camera has no frame (503) vs is truly offline (network error).
+ *   - Blob URLs let us swap frames atomically with no flicker.
  */
-function MjpegStream({ cameraId, token, className, style, alt }) {
-  const imgRef = useRef(null);
-  const retryTimerRef = useRef(null);
-  const [streamKey, setStreamKey] = useState(() => Date.now());
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const retryDelay = 3000; // ms before reconnecting after a stream failure
+const POLL_MS = 150; // ~6-7 fps — good balance of smoothness vs CPU/bandwidth
+const ERROR_THRESHOLD = 4; // consecutive failures before showing error state
 
-  // Build the stream URL with the current key as cache-buster
-  const streamUrl = `/api/cameras/${cameraId}/live?t=${streamKey}&token=${token}`;
+function CameraStream({ cameraId, token, className, style }) {
+  const [blobUrl, setBlobUrl]           = useState(null);
+  const [status, setStatus]             = useState('loading'); // 'loading' | 'live' | 'error'
+  const intervalRef                     = useRef(null);
+  const prevBlobRef                     = useRef(null);
+  const consecutiveErrorsRef            = useRef(0);
+  const mountedRef                      = useRef(true);
 
-  const scheduleRetry = useCallback(() => {
-    if (retryTimerRef.current) return; // already scheduled
-    retryTimerRef.current = setTimeout(() => {
-      retryTimerRef.current = null;
-      setHasError(false);
-      setIsLoading(true);
-      setStreamKey(Date.now()); // new timestamp → new URL → fresh connection
-    }, retryDelay);
-  }, [retryDelay]);
+  const fetchFrame = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/cameras/${cameraId}/snapshot`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  // Cleanup retry timer on unmount
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      if (!mountedRef.current) return;
+
+      // Swap blob URL atomically to avoid flicker
+      const url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+      setStatus('live');
+      consecutiveErrorsRef.current = 0;
+
+      // Revoke the old URL after a short delay so the img has time to paint it
+      const old = prevBlobRef.current;
+      prevBlobRef.current = url;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 500);
+
+    } catch {
+      if (!mountedRef.current) return;
+      consecutiveErrorsRef.current += 1;
+      if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) {
+        setStatus('error');
+      }
+    }
+  }, [cameraId, token]);
+
   useEffect(() => {
+    mountedRef.current = true;
+    setStatus('loading');
+    setBlobUrl(null);
+    consecutiveErrorsRef.current = 0;
+
+    // Kick off immediately, then poll
+    fetchFrame();
+    intervalRef.current = setInterval(fetchFrame, POLL_MS);
+
     return () => {
-      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      mountedRef.current = false;
+      clearInterval(intervalRef.current);
+      if (prevBlobRef.current) URL.revokeObjectURL(prevBlobRef.current);
     };
-  }, []);
-
-  // Re-mount on cameraId change
-  useEffect(() => {
-    setIsLoading(true);
-    setHasError(false);
-    setStreamKey(Date.now());
-  }, [cameraId]);
-
-  const handleLoad = () => {
-    setIsLoading(false);
-    setHasError(false);
-  };
-
-  const handleError = () => {
-    setHasError(true);
-    setIsLoading(false);
-    scheduleRetry();
-  };
+  }, [cameraId, fetchFrame]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {isLoading && !hasError && (
-        <div className="stream-shimmer" style={{
+      {/* Actual frame — always rendered so it retains its size */}
+      {blobUrl && (
+        <img
+          src={blobUrl}
+          className={className}
+          style={style}
+          alt="camera feed"
+          draggable={false}
+        />
+      )}
+
+      {/* Loading shimmer — shown until first frame arrives */}
+      {status === 'loading' && (
+        <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)',
-          backgroundSize: '200% 100%',
-          animation: 'shimmer 1.4s infinite',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.85)',
+          color: 'var(--text-muted)', fontSize: '12px', gap: '8px',
           borderRadius: 'inherit',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--text-muted)', fontSize: '12px', gap: '8px'
         }}>
-          <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
-          Connecting...
+          <span style={{ fontSize: '22px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
+          <span>Connecting...</span>
         </div>
       )}
-      <img
-        ref={imgRef}
-        src={streamUrl}
-        alt={alt}
-        className={className}
-        style={{
-          ...style,
-          opacity: isLoading ? 0 : 1,
-          transition: 'opacity 0.3s ease',
-        }}
-        onLoad={handleLoad}
-        onError={handleError}
-      />
-      {hasError && (
+
+      {/* Error / offline state */}
+      {status === 'error' && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -90,7 +109,7 @@ function MjpegStream({ cameraId, token, className, style, alt }) {
         }}>
           <span style={{ fontSize: '24px' }}>⚠️</span>
           <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Reconnecting...</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Retrying...</span>
         </div>
       )}
     </div>
@@ -105,22 +124,19 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
     return layout;
   };
 
-  // Helper to check if a camera is currently recording
-  const isCameraRecording = (camId) => {
-    // If there is a recording with no end_time in list, it is recording
-    return recordings.some(r => r.camera_id === camId && !r.end_time);
-  };
+  const isCameraRecording = (camId) =>
+    recordings.some(r => r.camera_id === camId && !r.end_time);
 
   const triggerMockMotion = async (e, camId, currentState) => {
-    e.stopPropagation(); // prevent opening detailed modal
+    e.stopPropagation();
     try {
       await fetch(`/api/cameras/${camId}/mock_motion`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ enabled: !currentState })
+        body: JSON.stringify({ enabled: !currentState }),
       });
       onRefreshRecordings();
     } catch (err) {
@@ -135,9 +151,9 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
         {cameras.length > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Grid Layout:</span>
-            <select 
-              className="grid-select" 
-              value={layout} 
+            <select
+              className="grid-select"
+              value={layout}
               onChange={(e) => setLayout(e.target.value)}
             >
               <option value="grid-layout-1">Single Fullscreen</option>
@@ -155,8 +171,8 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
           const isMock = cam.sub_url.startsWith('mock://');
 
           return (
-            <div 
-              key={cam.id} 
+            <div
+              key={cam.id}
               className={`camera-card glass-panel ${isRecording ? 'glow-red' : ''}`}
               onClick={() => onSelectCamera(cam)}
             >
@@ -173,13 +189,11 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
               </div>
 
               <div className="camera-stream-container">
-                <MjpegStream
+                <CameraStream
                   cameraId={cam.id}
                   token={token}
                   className="camera-stream-img"
-                  alt={cam.name}
                 />
-                
                 <div className="camera-card-badges">
                   {isRecording && <span className="badge badge-rec">🔴 REC</span>}
                   <span className="badge badge-sub">Substream View</span>
@@ -192,17 +206,17 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {isMock && (
-                    <button 
+                    <button
                       className={`btn btn-icon ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
                       onClick={(e) => triggerMockMotion(e, cam.id, isRecording)}
-                      title={isRecording ? "Stop Simulated Motion" : "Trigger Simulated Motion"}
+                      title={isRecording ? 'Stop Simulated Motion' : 'Trigger Simulated Motion'}
                       style={{ width: '32px', height: '32px', fontSize: '12px' }}
                     >
                       {isRecording ? '⏹️' : '🏃'}
                     </button>
                   )}
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    className="btn btn-primary"
                     onClick={() => onSelectCamera(cam)}
                     style={{ padding: '6px 12px', fontSize: '12px' }}
                   >
@@ -224,4 +238,3 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
     </div>
   );
 }
-

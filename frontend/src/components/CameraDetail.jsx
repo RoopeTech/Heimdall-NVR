@@ -1,80 +1,90 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Timeline from './Timeline';
+import PTZControls from './PTZControls';
 
 /**
- * MjpegStream — An <img> wrapper for MJPEG streams that automatically reconnects
- * if the stream fails or goes silent. On error it waits retryDelay ms then
- * reloads with a fresh timestamp to bust any stale connection.
+ * CameraStream — polls /api/cameras/{id}/snapshot every POLL_MS milliseconds.
+ * Switching from MJPEG <img> to fetch() polling because MJPEG fires onLoad
+ * before any frame arrives, making blank streams indistinguishable from live ones.
  */
-function MjpegStream({ cameraId, token, className, style, alt }) {
-  const retryTimerRef = useRef(null);
-  const [streamKey, setStreamKey] = useState(() => Date.now());
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const retryDelay = 3000;
+const POLL_MS = 150;
+const ERROR_THRESHOLD = 4;
 
-  const streamUrl = `/api/cameras/${cameraId}/live?t=${streamKey}&token=${token}`;
+function CameraStream({ cameraId, token, className, style }) {
+  const [blobUrl, setBlobUrl]   = useState(null);
+  const [status, setStatus]     = useState('loading');
+  const intervalRef             = useRef(null);
+  const prevBlobRef             = useRef(null);
+  const consecutiveErrorsRef    = useRef(0);
+  const mountedRef              = useRef(true);
 
-  const scheduleRetry = useCallback(() => {
-    if (retryTimerRef.current) return;
-    retryTimerRef.current = setTimeout(() => {
-      retryTimerRef.current = null;
-      setHasError(false);
-      setIsLoading(true);
-      setStreamKey(Date.now());
-    }, retryDelay);
-  }, [retryDelay]);
+  const fetchFrame = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/cameras/${cameraId}/snapshot`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      if (!mountedRef.current) return;
+      const url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+      setStatus('live');
+      consecutiveErrorsRef.current = 0;
+      const old = prevBlobRef.current;
+      prevBlobRef.current = url;
+      if (old) setTimeout(() => URL.revokeObjectURL(old), 500);
+    } catch {
+      if (!mountedRef.current) return;
+      consecutiveErrorsRef.current += 1;
+      if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) setStatus('error');
+    }
+  }, [cameraId, token]);
 
   useEffect(() => {
-    return () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current); };
-  }, []);
-
-  useEffect(() => {
-    setIsLoading(true);
-    setHasError(false);
-    setStreamKey(Date.now());
-  }, [cameraId]);
+    mountedRef.current = true;
+    setStatus('loading');
+    setBlobUrl(null);
+    consecutiveErrorsRef.current = 0;
+    fetchFrame();
+    intervalRef.current = setInterval(fetchFrame, POLL_MS);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(intervalRef.current);
+      if (prevBlobRef.current) URL.revokeObjectURL(prevBlobRef.current);
+    };
+  }, [cameraId, fetchFrame]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {isLoading && !hasError && (
+      {blobUrl && (
+        <img src={blobUrl} className={className} style={style} alt="camera feed" draggable={false} />
+      )}
+      {status === 'loading' && (
         <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10, 14, 26, 0.6)',
-          color: 'var(--text-muted)', fontSize: '13px', gap: '8px',
-          borderRadius: 'inherit',
-          animation: 'shimmer 1.4s infinite',
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.85)', color: 'var(--text-muted)',
+          fontSize: '13px', gap: '8px', borderRadius: 'inherit',
         }}>
-          <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
-          Connecting...
+          <span style={{ fontSize: '24px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
+          <span>Connecting...</span>
         </div>
       )}
-      <img
-        src={streamUrl}
-        alt={alt}
-        className={className}
-        style={{ ...style, opacity: isLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}
-        onLoad={() => { setIsLoading(false); setHasError(false); }}
-        onError={() => { setHasError(true); setIsLoading(false); scheduleRetry(); }}
-      />
-      {hasError && (
+      {status === 'error' && (
         <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10, 14, 26, 0.85)',
-          color: 'var(--text-secondary)', fontSize: '13px', gap: '8px',
-          borderRadius: 'inherit',
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.85)', color: 'var(--text-secondary)',
+          fontSize: '13px', gap: '8px', borderRadius: 'inherit',
         }}>
           <span style={{ fontSize: '28px' }}>⚠️</span>
           <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Reconnecting in 3s...</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Retrying...</span>
         </div>
       )}
     </div>
   );
 }
-import Timeline from './Timeline';
-import PTZControls from './PTZControls';
 
 export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset, token }) {
   const [playbackMode, setPlaybackMode] = useState(false);
@@ -385,11 +395,10 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
 
             {!playbackMode ? (
-              <MjpegStream
+              <CameraStream
                 cameraId={camera.id}
                 token={token}
                 className="camera-stream-img"
-                alt={camera.name}
                 style={transformStyle}
               />
             ) : (
