@@ -1,4 +1,230 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+/**
+ * MjpegStream — An <img> wrapper for MJPEG streams that automatically reconnects
+ * if the stream fails or goes silent. On error it waits `retryDelay` ms then
+ * reloads with a fresh timestamp to bust any stale connection.
+ */
+function MjpegStream({ cameraId, token, className, style, alt }) {
+  const imgRef = useRef(null);
+  const retryTimerRef = useRef(null);
+  const [streamKey, setStreamKey] = useState(() => Date.now());
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const retryDelay = 3000; // ms before reconnecting after a stream failure
+
+  // Build the stream URL with the current key as cache-buster
+  const streamUrl = `/api/cameras/${cameraId}/live?t=${streamKey}&token=${token}`;
+
+  const scheduleRetry = useCallback(() => {
+    if (retryTimerRef.current) return; // already scheduled
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      setHasError(false);
+      setIsLoading(true);
+      setStreamKey(Date.now()); // new timestamp → new URL → fresh connection
+    }, retryDelay);
+  }, [retryDelay]);
+
+  // Cleanup retry timer on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
+  // Re-mount on cameraId change
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+    setStreamKey(Date.now());
+  }, [cameraId]);
+
+  const handleLoad = () => {
+    setIsLoading(false);
+    setHasError(false);
+  };
+
+  const handleError = () => {
+    setHasError(true);
+    setIsLoading(false);
+    scheduleRetry();
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {isLoading && !hasError && (
+        <div className="stream-shimmer" style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)',
+          backgroundSize: '200% 100%',
+          animation: 'shimmer 1.4s infinite',
+          borderRadius: 'inherit',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--text-muted)', fontSize: '12px', gap: '8px'
+        }}>
+          <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
+          Connecting...
+        </div>
+      )}
+      <img
+        ref={imgRef}
+        src={streamUrl}
+        alt={alt}
+        className={className}
+        style={{
+          ...style,
+          opacity: isLoading ? 0 : 1,
+          transition: 'opacity 0.3s ease',
+        }}
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+      {hasError && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.85)',
+          color: 'var(--text-secondary)', fontSize: '12px', gap: '6px',
+          borderRadius: 'inherit',
+        }}>
+          <span style={{ fontSize: '24px' }}>⚠️</span>
+          <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Reconnecting...</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
+  const [layout, setLayout] = useState('grid-layout-2'); // default 2x2 grid
+
+  const getLayoutClass = () => {
+    if (cameras.length === 1) return 'grid-layout-1';
+    return layout;
+  };
+
+  // Helper to check if a camera is currently recording
+  const isCameraRecording = (camId) => {
+    // If there is a recording with no end_time in list, it is recording
+    return recordings.some(r => r.camera_id === camId && !r.end_time);
+  };
+
+  const triggerMockMotion = async (e, camId, currentState) => {
+    e.stopPropagation(); // prevent opening detailed modal
+    try {
+      await fetch(`/api/cameras/${camId}/mock_motion`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ enabled: !currentState })
+      });
+      onRefreshRecordings();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="view-container fade-in">
+      <div className="grid-controls">
+        <h2 style={{ fontSize: '24px', fontWeight: '700' }}>📹 Camera Stream Monitor</h2>
+        {cameras.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Grid Layout:</span>
+            <select 
+              className="grid-select" 
+              value={layout} 
+              onChange={(e) => setLayout(e.target.value)}
+            >
+              <option value="grid-layout-1">Single Fullscreen</option>
+              <option value="grid-layout-2">2 Columns</option>
+              <option value="grid-layout-3">3 Columns</option>
+              <option value="grid-layout-4">Grid (2x2)</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className={`cameras-grid ${getLayoutClass()}`}>
+        {cameras.map((cam) => {
+          const isRecording = isCameraRecording(cam.id);
+          const isMock = cam.sub_url.startsWith('mock://');
+
+          return (
+            <div 
+              key={cam.id} 
+              className={`camera-card glass-panel ${isRecording ? 'glow-red' : ''}`}
+              onClick={() => onSelectCamera(cam)}
+            >
+              <div className="camera-card-header">
+                <div className="camera-card-title">
+                  <span className={`camera-status-dot ${isRecording ? 'recording' : ''}`} />
+                  {cam.name}
+                </div>
+                {isMock && (
+                  <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-muted)' }}>
+                    Simulated
+                  </span>
+                )}
+              </div>
+
+              <div className="camera-stream-container">
+                <MjpegStream
+                  cameraId={cam.id}
+                  token={token}
+                  className="camera-stream-img"
+                  alt={cam.name}
+                />
+                
+                <div className="camera-card-badges">
+                  {isRecording && <span className="badge badge-rec">🔴 REC</span>}
+                  <span className="badge badge-sub">Substream View</span>
+                </div>
+              </div>
+
+              <div className="camera-card-footer">
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  {isRecording ? '🎥 Recording clip...' : 'Idle'}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {isMock && (
+                    <button 
+                      className={`btn btn-icon ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
+                      onClick={(e) => triggerMockMotion(e, cam.id, isRecording)}
+                      title={isRecording ? "Stop Simulated Motion" : "Trigger Simulated Motion"}
+                      style={{ width: '32px', height: '32px', fontSize: '12px' }}
+                    >
+                      {isRecording ? '⏹️' : '🏃'}
+                    </button>
+                  )}
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => onSelectCamera(cam)}
+                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                  >
+                    Timeline & PTZ
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {cameras.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 20px', color: 'var(--text-secondary)' }} className="glass-panel">
+            <h3>No Cameras Configured</h3>
+            <p style={{ fontSize: '14px', marginTop: '8px' }}>Go to Settings to add your first IP Camera stream.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
   const [layout, setLayout] = useState('grid-layout-2'); // default 2x2 grid

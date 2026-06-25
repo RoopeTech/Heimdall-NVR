@@ -74,6 +74,7 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
     async def frame_generator():
         import asyncio
         last_jpeg = None
+        no_frame_count = 0
         while True:
             if await request.is_disconnected():
                 break
@@ -84,20 +85,39 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
                     import cv2
                     ret, jpeg = cv2.imencode('.jpg', frame)
                     if ret:
+                        last_jpeg = jpeg.tobytes()
                         yield (b'--frame\r\n'
-                               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+                               b'Content-Type: image/jpeg\r\n\r\n' + last_jpeg + b'\r\n\r\n')
             else:
                 jpeg_bytes = camera_manager.manager.get_latest_jpeg(camera_id)
                 if jpeg_bytes is not None and jpeg_bytes != last_jpeg:
                     last_jpeg = jpeg_bytes
+                    no_frame_count = 0
                     yield (b'--frame\r\n'
                            b'Content-Type: image/jpeg\r\n\r\n' + jpeg_bytes + b'\r\n\r\n')
+                elif jpeg_bytes is None:
+                    # No frame yet (camera still connecting) — yield placeholder every 2s
+                    # so the browser always receives data and never shows a blank/broken image
+                    no_frame_count += 1
+                    if no_frame_count % 25 == 1: # every ~2s at 80ms interval
+                        thread = camera_manager.manager.threads.get(camera_id)
+                        if thread and thread.latest_jpeg_bytes:
+                            placeholder = thread.latest_jpeg_bytes
+                            yield (b'--frame\r\n'
+                                   b'Content-Type: image/jpeg\r\n\r\n' + placeholder + b'\r\n\r\n')
                            
             await asyncio.sleep(0.08) # ~12 FPS for UI grid to conserve resources
 
+    headers = {
+        # Prevent any intermediary (nginx, CDN, browser cache) from buffering the stream
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "X-Accel-Buffering": "no",  # Disable nginx proxy buffering
+    }
     return StreamingResponse(
         frame_generator(),
-        media_type="multipart/x-mixed-replace; boundary=frame"
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers=headers
     )
 
 # PTZ Control Endpoint

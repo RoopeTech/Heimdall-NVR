@@ -1,4 +1,78 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+/**
+ * MjpegStream — An <img> wrapper for MJPEG streams that automatically reconnects
+ * if the stream fails or goes silent. On error it waits retryDelay ms then
+ * reloads with a fresh timestamp to bust any stale connection.
+ */
+function MjpegStream({ cameraId, token, className, style, alt }) {
+  const retryTimerRef = useRef(null);
+  const [streamKey, setStreamKey] = useState(() => Date.now());
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const retryDelay = 3000;
+
+  const streamUrl = `/api/cameras/${cameraId}/live?t=${streamKey}&token=${token}`;
+
+  const scheduleRetry = useCallback(() => {
+    if (retryTimerRef.current) return;
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      setHasError(false);
+      setIsLoading(true);
+      setStreamKey(Date.now());
+    }, retryDelay);
+  }, [retryDelay]);
+
+  useEffect(() => {
+    return () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setHasError(false);
+    setStreamKey(Date.now());
+  }, [cameraId]);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {isLoading && !hasError && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.6)',
+          color: 'var(--text-muted)', fontSize: '13px', gap: '8px',
+          borderRadius: 'inherit',
+          animation: 'shimmer 1.4s infinite',
+        }}>
+          <span style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
+          Connecting...
+        </div>
+      )}
+      <img
+        src={streamUrl}
+        alt={alt}
+        className={className}
+        style={{ ...style, opacity: isLoading ? 0 : 1, transition: 'opacity 0.3s ease' }}
+        onLoad={() => { setIsLoading(false); setHasError(false); }}
+        onError={() => { setHasError(true); setIsLoading(false); scheduleRetry(); }}
+      />
+      {hasError && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10, 14, 26, 0.85)',
+          color: 'var(--text-secondary)', fontSize: '13px', gap: '8px',
+          borderRadius: 'inherit',
+        }}>
+          <span style={{ fontSize: '28px' }}>⚠️</span>
+          <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Reconnecting in 3s...</span>
+        </div>
+      )}
+    </div>
+  );
+}
 import Timeline from './Timeline';
 import PTZControls from './PTZControls';
 
@@ -311,12 +385,12 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
 
             {!playbackMode ? (
-              <img 
+              <MjpegStream
+                cameraId={camera.id}
+                token={token}
                 className="camera-stream-img"
-                src={`/api/cameras/${camera.id}/live?t=${Date.now()}&token=${token}`}
                 alt={camera.name}
                 style={transformStyle}
-                draggable={false}
               />
             ) : (
               <video
@@ -416,6 +490,15 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
           </div>
         </div>
       </div>
+
+      {/* Mobile-only sticky back button — prominently visible on Android/touch devices */}
+      <button
+        className="mobile-back-bar"
+        onClick={onClose}
+        aria-label="Back to camera grid"
+      >
+        ← Back to Cameras
+      </button>
     </div>
   );
 }

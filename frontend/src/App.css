@@ -828,3 +828,77 @@
     display: block !important;
   }
 }
+
+/* ─── MJPEG Stream Shimmer / Loading ───────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ─── Mobile Back Bar (Android / touch navigation) ──────────────────────────
+   Hidden on desktop. Shown as a fixed full-width bar at the bottom of the
+   camera detail modal on mobile so users can always navigate back.           */
+.mobile-back-bar {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  /* Show the back bar on mobile */
+  .mobile-back-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    height: 56px;
+    background: rgba(14, 22, 42, 0.97);
+    border-top: 1px solid var(--border-light);
+    backdrop-filter: blur(12px);
+    color: var(--primary);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: none;
+    /* Safe area for devices with home indicator (iPhone / Android) */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    touch-action: manipulation;
+    transition: background 0.15s ease;
+  }
+
+  .mobile-back-bar:active {
+    background: rgba(0, 200, 255, 0.1);
+  }
+
+  /* Give modal enough bottom padding so content doesn't hide behind the back bar */
+  .modal-overlay .modal-content {
+    padding-bottom: 64px !important;
+  }
+
+  /* Stack modal columns vertically on mobile */
+  .modal-content .modal-body-left,
+  .modal-content .modal-body-right {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Make the close (✕) button in modal header bigger for touch */
+  .modal-header .btn-icon {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 22px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
