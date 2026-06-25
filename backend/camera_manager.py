@@ -201,6 +201,8 @@ class CameraThread(threading.Thread):
         self.running = True
         self.latest_frame = None
         self.latest_stream_frame = None # Frame with motion boxes drawn for viewing
+        self.latest_jpeg_bytes = None
+        self.last_jpeg_time = 0
         
         # Motion state
         self.is_motion_detected = False
@@ -355,6 +357,27 @@ class CameraThread(threading.Thread):
                             print(f"[{self.name}] Error drawing OSD overlay: {e}")
                             
                     self.latest_stream_frame = display_frame
+                    
+                    # Offload JPEG encoding to the background camera thread.
+                    # Throttle it to ~12 FPS (every 80ms) and scale it down if width > 640.
+                    now_time = time.time()
+                    if now_time - self.last_jpeg_time >= 0.08:
+                        self.last_jpeg_time = now_time
+                        try:
+                            # Keep aspect ratio but limit width to 640px to reduce CPU and bandwidth load
+                            h, w = display_frame.shape[:2]
+                            if w > 640:
+                                scale = 640.0 / w
+                                nh, nw = int(h * scale), 640
+                                stream_preview = cv2.resize(display_frame, (nw, nh))
+                            else:
+                                stream_preview = display_frame
+                                
+                            ret, jpeg = cv2.imencode('.jpg', stream_preview)
+                            if ret:
+                                self.latest_jpeg_bytes = jpeg.tobytes()
+                        except Exception as e:
+                            print(f"[{self.name}] Error encoding stream frame: {e}")
                     
                     # Continuous / Hybrid segment splitting
                     if self.record_mode in ['always', 'hybrid']:
@@ -692,6 +715,11 @@ class CameraManager:
             if draw_boxes:
                 return thread.latest_stream_frame
             return thread.latest_frame
+        return None
+        
+    def get_latest_jpeg(self, camera_id):
+        if camera_id in self.threads:
+            return self.threads[camera_id].latest_jpeg_bytes
         return None
         
     def ptz_control(self, camera_id, action, pan=0.0, tilt=0.0, zoom=1.0):

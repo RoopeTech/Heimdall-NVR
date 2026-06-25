@@ -73,17 +73,26 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
         
     async def frame_generator():
         import asyncio
+        last_jpeg = None
         while True:
             if await request.is_disconnected():
                 break
                 
-            frame = camera_manager.manager.get_latest_frame(camera_id, draw_boxes=not raw)
-            if frame is not None:
-                import cv2
-                ret, jpeg = cv2.imencode('.jpg', frame)
-                if ret:
+            if raw:
+                frame = camera_manager.manager.get_latest_frame(camera_id, draw_boxes=False)
+                if frame is not None:
+                    import cv2
+                    ret, jpeg = cv2.imencode('.jpg', frame)
+                    if ret:
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+            else:
+                jpeg_bytes = camera_manager.manager.get_latest_jpeg(camera_id)
+                if jpeg_bytes is not None and jpeg_bytes != last_jpeg:
+                    last_jpeg = jpeg_bytes
                     yield (b'--frame\r\n'
-                           b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+                           b'Content-Type: image/jpeg\r\n\r\n' + jpeg_bytes + b'\r\n\r\n')
+                           
             await asyncio.sleep(0.08) # ~12 FPS for UI grid to conserve resources
 
     return StreamingResponse(
