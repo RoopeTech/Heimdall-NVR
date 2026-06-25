@@ -11,12 +11,12 @@ const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
 function CameraStream({ cameraId, token, className, style }) {
-  const [blobUrl, setBlobUrl]   = useState(null);
-  const [status, setStatus]     = useState('loading');
-  const intervalRef             = useRef(null);
-  const prevBlobRef             = useRef(null);
-  const consecutiveErrorsRef    = useRef(0);
-  const mountedRef              = useRef(true);
+  const [blobUrl, setBlobUrl]        = useState(null);
+  const [status, setStatus]          = useState('loading');
+  const intervalRef                  = useRef(null);
+  const prevBlobRef                  = useRef(null);
+  const consecutiveErrorsRef         = useRef(0);
+  const mountedRef                   = useRef(true);
 
   const fetchFrame = useCallback(async () => {
     try {
@@ -50,41 +50,49 @@ function CameraStream({ cameraId, token, className, style }) {
     return () => {
       mountedRef.current = false;
       clearInterval(intervalRef.current);
-      if (prevBlobRef.current) URL.revokeObjectURL(prevBlobRef.current);
+      if (prevBlobRef.current) {
+        URL.revokeObjectURL(prevBlobRef.current);
+        prevBlobRef.current = null;
+      }
     };
   }, [cameraId, fetchFrame]);
 
+  // Overlay style — fills the positioned ancestor (camera-stream-container)
+  const overlayStyle = {
+    position: 'absolute',
+    top: 0, left: 0, width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', gap: '8px',
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <>
       {blobUrl && (
-        <img src={blobUrl} className={className} style={style} alt="camera feed" draggable={false} />
+        <img
+          src={blobUrl}
+          className={className}
+          style={style}
+          alt="camera feed"
+          draggable={false}
+        />
       )}
       {status === 'loading' && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10, 14, 26, 0.85)', color: 'var(--text-muted)',
-          fontSize: '13px', gap: '8px', borderRadius: 'inherit',
-        }}>
+        <div style={{ ...overlayStyle, background: 'rgba(10,14,26,0.85)', color: 'var(--text-muted)', fontSize: '13px' }}>
           <span style={{ fontSize: '24px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
           <span>Connecting...</span>
         </div>
       )}
       {status === 'error' && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10, 14, 26, 0.85)', color: 'var(--text-secondary)',
-          fontSize: '13px', gap: '8px', borderRadius: 'inherit',
-        }}>
+        <div style={{ ...overlayStyle, background: 'rgba(10,14,26,0.85)', color: 'var(--text-secondary)', fontSize: '13px' }}>
           <span style={{ fontSize: '28px' }}>⚠️</span>
           <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
           <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Retrying...</span>
         </div>
       )}
-    </div>
+    </>
   );
 }
+
 
 export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset, token }) {
   const [playbackMode, setPlaybackMode] = useState(false);

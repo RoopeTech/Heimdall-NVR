@@ -3,48 +3,48 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 /**
  * CameraStream — polls /api/cameras/{id}/snapshot every POLL_MS milliseconds.
  *
+ * IMPORTANT CSS NOTE: camera-stream-container uses padding-bottom:56.25% to
+ * create the 16:9 box. Its height is 0 — the visible area comes from padding.
+ * Children MUST use position:absolute (via camera-stream-img class) to fill it.
+ * We render overlays as siblings with the same absolute positioning so they
+ * sit in the same space without needing an extra wrapper div.
+ *
  * Why polling instead of MJPEG <img>?
- *   - MJPEG fires onLoad as soon as HTTP connects, before any frame arrives,
- *     so a black/blank stream looks identical to a working one.
- *   - fetch() returns a real HTTP status each call, so we know exactly when
- *     the camera has no frame (503) vs is truly offline (network error).
- *   - Blob URLs let us swap frames atomically with no flicker.
+ *   MJPEG fires onLoad immediately when the HTTP connection opens (before any
+ *   frame arrives), so a black stream looks identical to a working one.
+ *   fetch() returns a real HTTP status each call — we know when a frame is
+ *   missing (503) vs the camera is offline (network error).
  */
-const POLL_MS = 150; // ~6-7 fps — good balance of smoothness vs CPU/bandwidth
-const ERROR_THRESHOLD = 4; // consecutive failures before showing error state
+const POLL_MS = 150; // ~6-7 fps
+const ERROR_THRESHOLD = 4;
 
-function CameraStream({ cameraId, token, className, style }) {
-  const [blobUrl, setBlobUrl]           = useState(null);
-  const [status, setStatus]             = useState('loading'); // 'loading' | 'live' | 'error'
-  const intervalRef                     = useRef(null);
-  const prevBlobRef                     = useRef(null);
-  const consecutiveErrorsRef            = useRef(0);
-  const mountedRef                      = useRef(true);
+function CameraStream({ cameraId, token, className }) {
+  const [blobUrl, setBlobUrl]        = useState(null);
+  const [status, setStatus]          = useState('loading'); // 'loading' | 'live' | 'error'
+  const intervalRef                  = useRef(null);
+  const prevBlobRef                  = useRef(null);
+  const consecutiveErrorsRef         = useRef(0);
+  const mountedRef                   = useRef(true);
 
   const fetchFrame = useCallback(async () => {
     try {
       const res = await fetch(`/api/cameras/${cameraId}/snapshot`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
       if (!mountedRef.current) return;
 
-      // Swap blob URL atomically to avoid flicker
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
       setStatus('live');
       consecutiveErrorsRef.current = 0;
 
-      // Revoke the old URL after a short delay so the img has time to paint it
+      // Revoke the old blob URL after the img has had time to paint the new one
       const old = prevBlobRef.current;
       prevBlobRef.current = url;
       if (old) setTimeout(() => URL.revokeObjectURL(old), 500);
-
     } catch {
       if (!mountedRef.current) return;
       consecutiveErrorsRef.current += 1;
@@ -60,64 +60,75 @@ function CameraStream({ cameraId, token, className, style }) {
     setBlobUrl(null);
     consecutiveErrorsRef.current = 0;
 
-    // Kick off immediately, then poll
     fetchFrame();
     intervalRef.current = setInterval(fetchFrame, POLL_MS);
 
     return () => {
       mountedRef.current = false;
       clearInterval(intervalRef.current);
-      if (prevBlobRef.current) URL.revokeObjectURL(prevBlobRef.current);
+      if (prevBlobRef.current) {
+        URL.revokeObjectURL(prevBlobRef.current);
+        prevBlobRef.current = null;
+      }
     };
   }, [cameraId, fetchFrame]);
 
+  // Overlay style — same absolute positioning as camera-stream-img
+  const overlayStyle = {
+    position: 'absolute',
+    top: 0, left: 0,
+    width: '100%', height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Actual frame — always rendered so it retains its size */}
+    <>
+      {/* Live frame — uses camera-stream-img class for absolute positioning */}
       {blobUrl && (
         <img
           src={blobUrl}
           className={className}
-          style={style}
           alt="camera feed"
           draggable={false}
         />
       )}
 
-      {/* Loading shimmer — shown until first frame arrives */}
+      {/* Loading shimmer — shown until first successful frame */}
       {status === 'loading' && (
         <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          ...overlayStyle,
           background: 'rgba(10, 14, 26, 0.85)',
-          color: 'var(--text-muted)', fontSize: '12px', gap: '8px',
-          borderRadius: 'inherit',
+          color: 'var(--text-muted)',
+          fontSize: '12px',
         }}>
           <span style={{ fontSize: '22px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
           <span>Connecting...</span>
         </div>
       )}
 
-      {/* Error / offline state */}
+      {/* Error state */}
       {status === 'error' && (
         <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          ...overlayStyle,
           background: 'rgba(10, 14, 26, 0.85)',
-          color: 'var(--text-secondary)', fontSize: '12px', gap: '6px',
-          borderRadius: 'inherit',
+          color: 'var(--text-secondary)',
+          fontSize: '12px',
         }}>
           <span style={{ fontSize: '24px' }}>⚠️</span>
           <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
           <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Retrying...</span>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
-  const [layout, setLayout] = useState('grid-layout-2'); // default 2x2 grid
+  const [layout, setLayout] = useState('grid-layout-2');
 
   const getLayoutClass = () => {
     if (cameras.length === 1) return 'grid-layout-1';
@@ -188,6 +199,8 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
                 )}
               </div>
 
+              {/* camera-stream-container: padding-bottom:56.25% gives 16:9 height.
+                  CameraStream renders its children as absolutes inside here. */}
               <div className="camera-stream-container">
                 <CameraStream
                   cameraId={cam.id}
