@@ -420,7 +420,7 @@
 
 /* Theatre mode — right panel collapses, video fills the space */
 .modal-content.theatre-mode {
-  grid-template-columns: 1fr 0;
+  grid-template-columns: 1fr;
 }
 .modal-content.theatre-mode .modal-body-right {
   display: none;
