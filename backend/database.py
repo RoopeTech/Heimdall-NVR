@@ -20,16 +20,6 @@ def verify_password(password: str, salt: str, password_hash: str) -> bool:
     h, _ = hash_password(password, salt)
     return h == password_hash
 
-def get_cipher(secret: str) -> Fernet:
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=b'static_salt',
-        iterations=100000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(secret.encode()))
-    return Fernet(key)
-
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nvr.db")
 
 def get_db_connection():
