@@ -828,9 +828,39 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     )}
                   </div>
                 ) : (
-                  <p style={{ fontSize: '13px', color: 'var(--accent-success)', fontWeight: '500' }}>
-                    ✔ Your NVR software is fully up to date.
-                  </p>
+                  <div>
+                    <p style={{ fontSize: '13px', color: 'var(--accent-success)', fontWeight: '500', marginBottom: '16px' }}>
+                      ✔ Your NVR software is fully up to date.
+                    </p>
+                    {updatingState === 'updating' ? (
+                      <div style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '13px' }}>
+                        ⏳ Applying updates and recompiling static UI assets... The server is restarting. Please wait 12s...
+                      </div>
+                    ) : updatingState === 'success' ? (
+                      <div style={{ color: 'var(--accent-success)', fontWeight: '600', fontSize: '13px' }}>
+                        ✅ Update successful! Reloading dashboard...
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          onClick={fetchUpdateStatus}
+                          disabled={checkingUpdate}
+                        >
+                          🔄 Check Again
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          onClick={handleApplyUpdate}
+                          disabled={loading}
+                        >
+                          ⚠️ Force Update
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
