@@ -457,7 +457,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
               <CameraStream 
                 camera={camera} 
                 token={token} 
-                className="nvr-detail-img" 
+                className="camera-stream-img" 
                 style={transformStyle}
               />
             ) : (
