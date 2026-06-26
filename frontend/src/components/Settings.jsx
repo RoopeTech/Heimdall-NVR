@@ -1178,21 +1178,6 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 </span>
               </div>
 
-              <div className="form-group" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', margin: '5px 0 10px 0' }}>
-                <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none', fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={osdEnabled} 
-                    onChange={(e) => setOsdEnabled(e.target.checked)} 
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <span>Overlay Time and Date (OSD) on Live Feed</span>
-                </label>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '28px' }}>
-                  Overlay the camera name and current timestamp onto the live stream.
-                </span>
-              </div>
-
               <div style={{ gridColumn: 'span 2', height: '1px', background: 'var(--border-light)', margin: '10px 0' }} />
 
               <div style={{ gridColumn: 'span 2' }}>

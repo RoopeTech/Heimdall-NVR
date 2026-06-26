@@ -356,25 +356,7 @@ class CameraThread(threading.Thread):
                             cv2.circle(display_frame, (30, 70), 10, (0, 0, 255), -1)
                             cv2.putText(display_frame, "MOTION DETECTED", (50, 76), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
                             
-                    # Draw OSD date/time overlay if enabled and it's a real camera (mock camera draws its own HUD)
-                    if not self.is_mock and self.osd_enabled:
-                        try:
-                            h, w = display_frame.shape[:2]
-                            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            
-                            # 1. Camera Name on top-left
-                            name_str = f"{self.name} | LIVE"
-                            name_size = cv2.getTextSize(name_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                            cv2.rectangle(display_frame, (10, 15), (20 + name_size[0], 45), (0, 0, 0), -1)
-                            cv2.putText(display_frame, name_str, (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
-                            
-                            # 2. Timestamp on top-right
-                            time_size = cv2.getTextSize(time_str, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)[0]
-                            text_x = w - time_size[0] - 20
-                            cv2.rectangle(display_frame, (text_x - 10, 15), (w - 10, 45), (0, 0, 0), -1)
-                            cv2.putText(display_frame, time_str, (text_x, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2, cv2.LINE_AA)
-                        except Exception as e:
-                            print(f"[{self.name}] Error drawing OSD overlay: {e}")
+                    # Software OSD rendering has been removed; timestamps are now drawn natively by the camera hardware.
                             
                     self.latest_stream_frame = display_frame
                     
