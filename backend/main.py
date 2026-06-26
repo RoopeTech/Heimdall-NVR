@@ -588,6 +588,10 @@ async def proxy_middleware(request: Request, call_next):
                 if not body:
                     headers.pop("content-length", None)
                 
+                auth = None
+                if parsed.username and parsed.password:
+                    auth = (parsed.username, parsed.password)
+                
                 try:
                     req = proxy_client.build_request(
                         request.method,
@@ -596,7 +600,7 @@ async def proxy_middleware(request: Request, call_next):
                         content=body
                     )
                     
-                    resp = await proxy_client.send(req, stream=True)
+                    resp = await proxy_client.send(req, stream=True, auth=auth)
                     return StreamingResponse(
                         resp.aiter_raw(),
                         status_code=resp.status_code,
@@ -640,6 +644,10 @@ async def camera_proxy(camera_id: int, path: str, request: Request, current_user
         body = None
         headers.pop("content-length", None)
     
+    auth = None
+    if parsed.username and parsed.password:
+        auth = (parsed.username, parsed.password)
+    
     try:
         req = proxy_client.build_request(
             request.method,
@@ -648,7 +656,7 @@ async def camera_proxy(camera_id: int, path: str, request: Request, current_user
             content=body
         )
         
-        resp = await proxy_client.send(req, stream=True)
+        resp = await proxy_client.send(req, stream=True, auth=auth)
         return StreamingResponse(
             resp.aiter_raw(),
             status_code=resp.status_code,
