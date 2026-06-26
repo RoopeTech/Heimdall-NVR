@@ -442,6 +442,13 @@ def get_recordings(camera_id=None, date_str=None):
     conn.close()
     return recordings
 
+def get_recordings_since(iso_time_string):
+    conn = get_db_connection()
+    query = "SELECT * FROM recordings WHERE start_time >= ? ORDER BY start_time DESC"
+    recordings = [dict(row) for row in conn.execute(query, (iso_time_string,)).fetchall()]
+    conn.close()
+    return recordings
+
 def get_recording_by_filename(filename):
     conn = get_db_connection()
     row = conn.execute("SELECT * FROM recordings WHERE filepath = ?", (filename,)).fetchone()

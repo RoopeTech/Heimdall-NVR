@@ -748,6 +748,49 @@ async def camera_proxy(camera_id: int, path: str, request: Request, current_user
         print(f"[Camera Proxy] Error: {e}")
         return Response(content=f"Proxy Error: {str(e)}\n\n{traceback.format_exc()}", status_code=502)
 
+# ── System Endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/api/system/storage")
+def get_storage_stats(current_user: dict = Depends(get_current_user)):
+    import shutil
+    import time
+    from datetime import datetime, timedelta
+    
+    # 1. Disk usage
+    total, used, free = shutil.disk_usage(camera_manager.RECORDINGS_DIR)
+    
+    # 2. Recordings stats for GB/hr (last 24h)
+    cutoff = (datetime.now() - timedelta(days=1)).isoformat()
+    recordings = database.get_recordings_since(cutoff)
+    
+    total_size_bytes = 0
+    total_duration_sec = 0
+    
+    for r in recordings:
+        if r['duration']:
+            filepath = os.path.join(camera_manager.RECORDINGS_DIR, r['filepath'])
+            if os.path.exists(filepath):
+                total_duration_sec += r['duration']
+                total_size_bytes += os.path.getsize(filepath)
+                
+    gb_per_hour = 0
+    if total_duration_sec > 0:
+        gb_per_hour = (total_size_bytes / (1024**3)) / (total_duration_sec / 3600)
+        
+    # Time until full
+    hours_until_full = 0
+    if gb_per_hour > 0:
+        free_gb = free / (1024**3)
+        hours_until_full = free_gb / gb_per_hour
+
+    return {
+        "total_gb": total / (1024**3),
+        "used_gb": used / (1024**3),
+        "free_gb": free / (1024**3),
+        "gb_per_hour": gb_per_hour,
+        "hours_until_full": hours_until_full
+    }
+
 # Serve Frontend static assets
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 

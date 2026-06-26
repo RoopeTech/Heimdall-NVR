@@ -6,10 +6,26 @@ export default function RecordingsArchive({ cameras, token }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedCameraId, setSelectedCameraId] = useState('all');
   const [playingRecording, setPlayingRecording] = useState(null);
+  const [storageStats, setStorageStats] = useState(null);
 
   useEffect(() => {
     fetchArchive();
+    fetchStorageStats();
   }, [selectedDate, selectedCameraId]);
+
+  const fetchStorageStats = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/system/storage', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setStorageStats(await res.json());
+      }
+    } catch (e) {
+      console.error('Error fetching storage stats:', e);
+    }
+  };
 
   const fetchArchive = async () => {
     if (!token) return;
@@ -63,6 +79,53 @@ export default function RecordingsArchive({ cameras, token }) {
     <div className="view-container fade-in">
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
+        {storageStats && (
+          <div className="glass-panel fade-in" style={{ padding: '20px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '20px' }}>💾</span> Storage Overview
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
+              
+              {/* Drive Usage Progress */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                  <span><strong style={{ color: 'var(--text-primary)' }}>{storageStats.used_gb.toFixed(1)} GB</strong> Used</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{storageStats.free_gb.toFixed(1)} GB Free of {storageStats.total_gb.toFixed(1)} GB</span>
+                </div>
+                <div style={{ height: '12px', background: 'var(--bg-tertiary)', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    width: `${(storageStats.used_gb / storageStats.total_gb) * 100}%`,
+                    background: storageStats.free_gb < 50 ? 'var(--danger-color)' : 'var(--primary-color)',
+                    transition: 'width 1s ease-in-out'
+                  }} />
+                </div>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                <label className="form-label" style={{ fontSize: '12px', marginBottom: '8px' }}>Recording Rate (Last 24h)</label>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  {storageStats.gb_per_hour > 0 ? `${storageStats.gb_per_hour.toFixed(2)} GB/hr` : 'Calculating...'}
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                <label className="form-label" style={{ fontSize: '12px', marginBottom: '8px' }}>Estimated Time Remaining</label>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  {storageStats.hours_until_full > 0 
+                    ? (storageStats.hours_until_full > 48 
+                        ? `${(storageStats.hours_until_full / 24).toFixed(1)} Days` 
+                        : `${storageStats.hours_until_full.toFixed(0)} Hours`)
+                    : '∞ Days'}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📼 Recordings Archive</h2>
