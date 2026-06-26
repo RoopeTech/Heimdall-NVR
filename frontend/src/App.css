@@ -361,6 +361,11 @@
 @media (max-width: 640px) {
   .nvr-mosaic {
     grid-template-columns: 1fr !important;
+    grid-auto-rows: auto !important;
+    overflow-y: auto !important;
+  }
+  .nvr-cell {
+    aspect-ratio: 16 / 9;
   }
   .nvr-toolbar {
     flex-direction: column;
@@ -424,8 +429,8 @@
     padding: 0 !important;
   }
   .modal-content {
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto auto !important;
+    display: flex !important;
+    flex-direction: column !important;
     width: 100vw !important;
     height: 100vh !important;
     max-width: 100vw !important;
@@ -436,6 +441,10 @@
     border: none !important;
     overflow-y: auto !important;
     resize: none !important;
+  }
+  .modal-body-left, .modal-body-right {
+    overflow: visible !important;
+    min-height: max-content;
   }
 }
 
