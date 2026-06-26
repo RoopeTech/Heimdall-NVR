@@ -39,7 +39,6 @@ function CameraStream({ camera, token, className }) {
       consecutiveErrorsRef.current += 1;
       if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) setStatus('error');
     }
-    }
   }, [camera?.id, token, isImageStream]);
 
   useEffect(() => {
