@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 
-export default function Timeline({ recordings, selectedDate, onPlayRecording, currentPlaybackTime, events }) {
+export default function Timeline({ recordings, selectedDate, onDateChange, onPlayRecording, currentPlaybackTime, events }) {
   const trackRef = useRef(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   // Helper to convert ISO time to seconds from start of the selected day
   const getTimeInSecondsForDay = (isoStr) => {
@@ -76,17 +77,47 @@ export default function Timeline({ recordings, selectedDate, onPlayRecording, cu
 
   return (
     <div className="timeline-container glass-panel" style={{ padding: '16px' }}>
-      <div className="timeline-info">
+      <div className="timeline-info" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', marginBottom: '12px' }}>
         <span style={{ fontWeight: '600' }}>📹 Event Timeline</span>
-        <span>Date: {selectedDate}</span>
+        
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Date:</label>
+          <input 
+            type="date" 
+            value={selectedDate}
+            onChange={(e) => onDateChange && onDateChange(e.target.value)}
+            style={{ 
+              background: 'rgba(0,0,0,0.3)', 
+              border: '1px solid var(--border-light)', 
+              color: 'white', 
+              padding: '4px 8px', 
+              borderRadius: '4px',
+              colorScheme: 'dark'
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
+          <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Zoom: {zoomLevel}x</label>
+          <input 
+            type="range" 
+            min="1" 
+            max="24" 
+            value={zoomLevel}
+            onChange={(e) => setZoomLevel(parseInt(e.target.value))}
+            style={{ width: '100px', cursor: 'pointer' }}
+          />
+        </div>
       </div>
 
-      <div 
-        className="timeline-track-outer" 
-        ref={trackRef}
-        onClick={handleTrackClick}
-      >
-        {/* Hour markers/ticks */}
+      <div style={{ overflowX: 'auto', paddingBottom: '8px' }}>
+        <div 
+          className="timeline-track-outer" 
+          ref={trackRef}
+          onClick={handleTrackClick}
+          style={{ width: `${zoomLevel * 100}%`, minWidth: '100%' }}
+        >
+          {/* Hour markers/ticks */}
         {hourLabels.map((hr) => {
           const pct = (hr / 24) * 100;
           return (
@@ -156,16 +187,30 @@ export default function Timeline({ recordings, selectedDate, onPlayRecording, cu
             <div 
               key={ev.id}
               className="timeline-motion-marker"
+              onClick={(e) => {
+                e.stopPropagation();
+                const targetSec = Math.max(0, sec - 2); // Jump 2s before motion
+                const rec = recordings.find((r) => {
+                  const s = getTimeInSecondsForDay(r.start_time);
+                  const en = r.end_time ? getTimeInSecondsForDay(r.end_time) : 86400;
+                  return targetSec >= s && targetSec <= en;
+                });
+                if (rec) {
+                  onPlayRecording(rec, targetSec - getTimeInSecondsForDay(rec.start_time));
+                } else {
+                  onPlayRecording(null, targetSec);
+                }
+              }}
               style={{
                 left: `${pct}%`,
                 position: 'absolute',
                 top: '15px',
-                width: '3px',
+                width: '6px',
                 height: '30px',
                 background: 'var(--accent-motion)',
                 boxShadow: '0 0 6px var(--accent-motion-glow)',
                 zIndex: 5,
-                pointerEvents: 'none'
+                cursor: 'pointer'
               }}
               title={`Motion Alert: ${new Date(ev.timestamp).toLocaleTimeString()}`}
             />
@@ -181,6 +226,7 @@ export default function Timeline({ recordings, selectedDate, onPlayRecording, cu
             <div className="timeline-playhead-cap" />
           </div>
         )}
+        </div>
       </div>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>

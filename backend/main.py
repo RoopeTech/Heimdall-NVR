@@ -326,8 +326,8 @@ def play_recording(filename: str, current_user: dict = Depends(get_current_user)
 
 # Events API
 @app.get("/api/events")
-def list_events(camera_id: int = Query(None), limit: int = 100, current_user: dict = Depends(get_current_user)):
-    return database.get_events(camera_id, limit)
+def list_events(camera_id: int = Query(None), date: str = Query(None), limit: int = 100, current_user: dict = Depends(get_current_user)):
+    return database.get_events(camera_id, date, limit)
 
 # System Settings API
 @app.get("/api/settings")

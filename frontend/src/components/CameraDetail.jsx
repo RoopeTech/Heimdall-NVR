@@ -100,6 +100,8 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null);
   const [mockMotionActive, setMockMotionActive] = useState(true);
   const [cameraEvents, setCameraEvents] = useState([]);
+  const [dayRecordings, setDayRecordings] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [theatreMode, setTheatreMode] = useState(false);
   const videoRef = useRef(null);
 
@@ -253,21 +255,26 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
   // Poll camera-specific events & recordings
   useEffect(() => {
-    fetchEvents();
+    fetchTimelineData();
     const interval = setInterval(() => {
-      fetchEvents();
+      fetchTimelineData();
     }, 3000);
     return () => clearInterval(interval);
-  }, [camera.id]);
+  }, [camera.id, selectedDate]);
 
-  const fetchEvents = async () => {
+  const fetchTimelineData = async () => {
     try {
-      const res = await fetch(`/api/events?camera_id=${camera.id}&limit=500`, {
+      const evRes = await fetch(`/api/events?camera_id=${camera.id}&date=${selectedDate}&limit=500`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
-        const data = await res.json();
-        setCameraEvents(data);
+      if (evRes.ok) {
+        setCameraEvents(await evRes.json());
+      }
+      const recRes = await fetch(`/api/recordings?camera_id=${camera.id}&date=${selectedDate}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (recRes.ok) {
+        setDayRecordings(await recRes.json());
       }
     } catch (e) {
       console.error(e);
@@ -349,7 +356,6 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     }
   };
 
-  const selectedDate = new Date().toISOString().split('T')[0]; // today's date
 
   return (
     <div className="modal-overlay">
@@ -458,8 +464,9 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
           </div>
 
            <Timeline 
-            recordings={recordings.filter(r => r.camera_id === camera.id)}
+            recordings={dayRecordings}
             selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
             onPlayRecording={handlePlayRecording}
             currentPlaybackTime={playbackMode ? currentPlaybackTime : new Date()}
             events={cameraEvents}

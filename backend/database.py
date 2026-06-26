@@ -508,13 +508,21 @@ def log_event(camera_id, event_type, details=None):
     conn.commit()
     conn.close()
 
-def get_events(camera_id=None, limit=100):
+def get_events(camera_id=None, date=None, limit=100):
     conn = get_db_connection()
     query = "SELECT events.*, cameras.name as camera_name FROM events JOIN cameras ON events.camera_id = cameras.id"
     params = []
+    conditions = []
     if camera_id is not None:
-        query += " WHERE events.camera_id = ?"
+        conditions.append("events.camera_id = ?")
         params.append(camera_id)
+    if date is not None:
+        conditions.append("DATE(events.timestamp) = ?")
+        params.append(date)
+        
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+        
     query += " ORDER BY timestamp DESC LIMIT ?"
     params.append(limit)
     events = [dict(row) for row in conn.execute(query, params).fetchall()]
