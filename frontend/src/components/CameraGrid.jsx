@@ -107,7 +107,17 @@ const LAYOUT_PRESETS = [
 export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
   const [layoutCols, setLayoutCols] = useState('auto');
   const [groups, setGroups]         = useState([]);
-  const [activeGroup, setActiveGroup] = useState(null); // null = "All"
+  const [activeGroup, setActiveGroup] = useState(() => {
+    const saved = localStorage.getItem('nvr_active_group');
+    if (!saved || saved === 'null') return null;
+    const parsed = parseInt(saved, 10);
+    return isNaN(parsed) ? null : parsed;
+  });
+
+  // Save activeGroup to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('nvr_active_group', activeGroup === null ? 'null' : activeGroup.toString());
+  }, [activeGroup]);
 
   // Fetch camera groups
   useEffect(() => {
