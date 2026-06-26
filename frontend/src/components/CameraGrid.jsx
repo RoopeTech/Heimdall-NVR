@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * CameraStream — polls /api/cameras/{id}/snapshot every POLL_MS milliseconds.
- *
- * Renders as a React Fragment (no wrapper div) so that img and overlays are
- * direct absolute-positioned children of camera-stream-container, which now
- * uses flex:1 to fill the resized card height.
+ * Renders as a React Fragment so img is a direct child of the container.
  */
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
@@ -62,6 +59,7 @@ function CameraStream({ cameraId, token, className }) {
     top: 0, left: 0, width: '100%', height: '100%',
     display: 'flex', flexDirection: 'column',
     alignItems: 'center', justifyContent: 'center', gap: '8px',
+    background: 'rgba(6,9,19,0.92)',
   };
 
   return (
@@ -70,14 +68,14 @@ function CameraStream({ cameraId, token, className }) {
         <img src={blobUrl} className={className} alt="camera feed" draggable={false} />
       )}
       {status === 'loading' && (
-        <div style={{ ...overlayStyle, background: 'rgba(10,14,26,0.85)', color: 'var(--text-muted)', fontSize: '12px' }}>
-          <span style={{ fontSize: '22px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
+        <div style={{ ...overlayStyle, color: 'var(--text-muted)', fontSize: '12px' }}>
+          <span style={{ fontSize: '28px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
           <span>Connecting...</span>
         </div>
       )}
       {status === 'error' && (
-        <div style={{ ...overlayStyle, background: 'rgba(10,14,26,0.85)', color: 'var(--text-secondary)', fontSize: '12px' }}>
-          <span style={{ fontSize: '24px' }}>⚠️</span>
+        <div style={{ ...overlayStyle, color: 'var(--text-secondary)', fontSize: '12px' }}>
+          <span style={{ fontSize: '28px' }}>⚠️</span>
           <span style={{ fontWeight: '600' }}>Stream Unavailable</span>
           <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>Retrying...</span>
         </div>
@@ -86,9 +84,29 @@ function CameraStream({ cameraId, token, className }) {
   );
 }
 
+// Compute optimal grid columns for N cameras to maximize tile size
+function getGridCols(count) {
+  if (count <= 1) return 1;
+  if (count <= 2) return 2;
+  if (count <= 4) return 2;
+  if (count <= 6) return 3;
+  if (count <= 9) return 3;
+  if (count <= 12) return 4;
+  return 4;
+}
+
+// Layout presets — columns the user can force-override with the selector
+const LAYOUT_PRESETS = [
+  { value: 'auto',  label: 'Auto' },
+  { value: '1',     label: '1×' },
+  { value: '2',     label: '2×' },
+  { value: '3',     label: '3×' },
+  { value: '4',     label: '4×' },
+];
+
 export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
-  const [layout, setLayout] = useState('grid-layout-2');
-  const [groups, setGroups] = useState([]);
+  const [layoutCols, setLayoutCols] = useState('auto');
+  const [groups, setGroups]         = useState([]);
   const [activeGroup, setActiveGroup] = useState(null); // null = "All"
 
   // Fetch camera groups
@@ -125,122 +143,138 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
     }
   };
 
+  const cols = layoutCols === 'auto'
+    ? getGridCols(visibleCameras.length)
+    : parseInt(layoutCols, 10);
+
+  const count = visibleCameras.length;
+
   return (
-    <div className="view-container fade-in">
-      {/* ── Header row ── */}
-      <div className="grid-controls">
-        <h2 style={{ fontSize: '24px', fontWeight: '700' }}>📹 Camera Stream Monitor</h2>
-        {cameras.length > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Default layout:</span>
-            <select className="grid-select" value={layout} onChange={(e) => setLayout(e.target.value)}>
-              <option value="grid-layout-1">Single Column</option>
-              <option value="grid-layout-2">2 Columns</option>
-              <option value="grid-layout-3">3 Columns</option>
-              <option value="grid-layout-4">2×2 Grid</option>
-            </select>
+    <div className="nvr-montage-root fade-in">
+
+      {/* ── Slim toolbar ── */}
+      <div className="nvr-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+            📹 {count} Camera{count !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Group filter chips */}
+          {groups.length > 0 && (
+            <div className="group-filter-bar" style={{ marginBottom: 0 }}>
+              <button
+                className={`group-chip ${activeGroup === null ? 'active' : ''}`}
+                onClick={() => setActiveGroup(null)}
+              >
+                All
+                <span className="group-chip-count">{cameras.length}</span>
+              </button>
+              {groups.map(g => (
+                <button
+                  key={g.id}
+                  className={`group-chip ${activeGroup === g.id ? 'active' : ''}`}
+                  onClick={() => setActiveGroup(g.id)}
+                >
+                  {g.name}
+                  <span className="group-chip-count">{g.camera_ids.length}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Layout selector */}
+          <div className="nvr-layout-btns">
+            {LAYOUT_PRESETS.map(p => (
+              <button
+                key={p.value}
+                className={`nvr-layout-btn ${layoutCols === p.value ? 'active' : ''}`}
+                onClick={() => setLayoutCols(p.value)}
+                title={`${p.label} column layout`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ── Group filter chips ── */}
-      {groups.length > 0 && (
-        <div className="group-filter-bar">
-          <button
-            className={`group-chip ${activeGroup === null ? 'active' : ''}`}
-            onClick={() => setActiveGroup(null)}
-          >
-            All
-            <span className="group-chip-count">{cameras.length}</span>
-          </button>
-          {groups.map(g => (
-            <button
-              key={g.id}
-              className={`group-chip ${activeGroup === g.id ? 'active' : ''}`}
-              onClick={() => setActiveGroup(g.id)}
-            >
-              {g.name}
-              <span className="group-chip-count">{g.camera_ids.length}</span>
-            </button>
-          ))}
+      {/* ── Camera mosaic grid ── */}
+      {count === 0 && cameras.length > 0 ? (
+        <div className="nvr-empty-state glass-panel">
+          <h3>No cameras in this group</h3>
+          <p>Add cameras to this group in Settings → Camera Groups.</p>
         </div>
-      )}
+      ) : count === 0 ? (
+        <div className="nvr-empty-state glass-panel">
+          <h3>No Cameras Configured</h3>
+          <p>Go to Settings to add your first IP Camera stream.</p>
+        </div>
+      ) : (
+        <div
+          className="nvr-mosaic"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          }}
+        >
+          {visibleCameras.map((cam) => {
+            const isRecording = isCameraRecording(cam.id);
+            const isMock = cam.sub_url?.startsWith('mock://');
 
-      {/* ── Camera tiles ── */}
-      <div className={`cameras-grid ${layout}`}>
-        {visibleCameras.map((cam) => {
-          const isRecording = isCameraRecording(cam.id);
-          const isMock = cam.sub_url.startsWith('mock://');
-
-          return (
-            <div
-              key={cam.id}
-              className={`camera-card glass-panel ${isRecording ? 'glow-red' : ''}`}
-              onClick={() => onSelectCamera(cam)}
-              title="Drag bottom-right corner to resize"
-            >
-              <div className="camera-card-header">
-                <div className="camera-card-title">
-                  <span className={`camera-status-dot ${isRecording ? 'recording' : ''}`} />
-                  {cam.name}
+            return (
+              <div
+                key={cam.id}
+                className={`nvr-cell ${isRecording ? 'nvr-cell-recording' : ''}`}
+                onClick={() => onSelectCamera(cam)}
+                title={`${cam.name} — click to open detail view`}
+              >
+                {/* Full-bleed stream */}
+                <div className="nvr-cell-stream">
+                  <CameraStream cameraId={cam.id} token={token} className="nvr-cell-img" />
                 </div>
-                {isMock && (
-                  <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-muted)' }}>
-                    Simulated
-                  </span>
+
+                {/* Top-left: camera name label */}
+                <div className="nvr-cell-label">
+                  <span className={`nvr-status-dot ${isRecording ? 'rec' : ''}`} />
+                  <span className="nvr-cam-name">{cam.name}</span>
+                  {isMock && <span className="nvr-badge-sim">SIM</span>}
+                </div>
+
+                {/* Top-right: REC badge */}
+                {isRecording && (
+                  <div className="nvr-cell-rec-badge">
+                    🔴 REC
+                  </div>
                 )}
-              </div>
 
-              <div className="camera-stream-container">
-                <CameraStream cameraId={cam.id} token={token} className="camera-stream-img" />
-                <div className="camera-card-badges">
-                  {isRecording && <span className="badge badge-rec">🔴 REC</span>}
-                  <span className="badge badge-sub">Substream</span>
-                </div>
-              </div>
-
-              <div className="camera-card-footer">
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {isRecording ? '🎥 Recording clip...' : 'Idle'}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Bottom-right: action buttons (mock trigger + open detail) */}
+                <div className="nvr-cell-actions" onClick={e => e.stopPropagation()}>
                   {isMock && (
                     <button
-                      className={`btn btn-icon ${isRecording ? 'btn-danger' : 'btn-secondary'}`}
+                      className={`nvr-action-btn ${isRecording ? 'danger' : ''}`}
                       onClick={(e) => triggerMockMotion(e, cam.id, isRecording)}
                       title={isRecording ? 'Stop Motion' : 'Trigger Motion'}
-                      style={{ width: '32px', height: '32px', fontSize: '12px' }}
                     >
-                      {isRecording ? '⏹️' : '🏃'}
+                      {isRecording ? '⏹' : '🏃'}
                     </button>
                   )}
                   <button
-                    className="btn btn-primary"
+                    className="nvr-action-btn"
                     onClick={() => onSelectCamera(cam)}
-                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                    title="Open Detail / Timeline / PTZ"
                   >
-                    Timeline & PTZ
+                    ⛶
                   </button>
                 </div>
+
+                {/* Hover shimmer overlay */}
+                <div className="nvr-cell-hover-ring" />
               </div>
-            </div>
-          );
-        })}
-
-        {visibleCameras.length === 0 && cameras.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)', width: '100%' }} className="glass-panel">
-            <h3>No cameras in this group</h3>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Add cameras to this group in Settings → Camera Groups.</p>
-          </div>
-        )}
-
-        {cameras.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--text-secondary)', width: '100%' }} className="glass-panel">
-            <h3>No Cameras Configured</h3>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Go to Settings to add your first IP Camera stream.</p>
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

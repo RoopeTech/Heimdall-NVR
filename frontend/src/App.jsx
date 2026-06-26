@@ -414,20 +414,15 @@ export default function App() {
 
       <main className="app-main">
         {activeTab === 'grid' && (
-          <div className="dashboard-grid">
-            <CameraGrid 
-              cameras={cameras} 
-              recordings={recordings}
-              onSelectCamera={handleSelectCamera}
-              onRefreshRecordings={fetchRecordings}
-              token={token}
-            />
-            <EventLog 
-              events={events.slice(0, 10)} 
-              onEventClick={handleEventClick}
-            />
-          </div>
+          <CameraGrid 
+            cameras={cameras} 
+            recordings={recordings}
+            onSelectCamera={handleSelectCamera}
+            onRefreshRecordings={fetchRecordings}
+            token={token}
+          />
         )}
+
 
         {activeTab === 'events' && (
           <div className="view-container">
