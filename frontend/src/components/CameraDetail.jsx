@@ -356,6 +356,25 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     }
   };
 
+  const restartStream = async () => {
+    try {
+      await fetch(`/api/cameras/${camera.id}/restart`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      // Force the camera stream to briefly show loading state by clearing the blob
+      if (prevBlobRef.current) {
+        URL.revokeObjectURL(prevBlobRef.current);
+        prevBlobRef.current = null;
+      }
+      setBlobUrl(null);
+      setStatus('loading');
+    } catch (e) {
+      console.error("Error restarting stream:", e);
+    }
+  };
+
+
 
   return (
     <div className="modal-overlay">
@@ -368,6 +387,14 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '13px' }}
+              onClick={restartStream}
+              title="Restart the camera stream if it gets stuck"
+            >
+              ↻ Restart Stream
+            </button>
             <button
               className={`btn-theatre${theatreMode ? ' active' : ''}`}
               onClick={() => setTheatreMode(t => !t)}
