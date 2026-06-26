@@ -201,7 +201,8 @@ class CameraThread(threading.Thread):
         self.running = True
         self.latest_frame = None
         self.latest_stream_frame = None # Frame with motion boxes drawn for viewing
-        self.latest_jpeg_bytes = None
+        self.latest_jpeg_bytes = None      # 640px-wide thumbnail for grid polling
+        self.latest_hq_jpeg_bytes = None   # Full-resolution JPEG for detail modal
         self.last_jpeg_time = 0
         self.consecutive_failures = 0
         self._generate_connecting_placeholder()
@@ -371,23 +372,31 @@ class CameraThread(threading.Thread):
                     self.latest_stream_frame = display_frame
                     
                     # Offload JPEG encoding to the background camera thread.
-                    # Throttle it to ~12 FPS (every 80ms) and scale it down if width > 640.
+                    # Two quality levels:
+                    #   latest_jpeg_bytes     — 640px-wide thumbnail (for grid polling, low bandwidth)
+                    #   latest_hq_jpeg_bytes  — full resolution (for detail/modal view)
                     now_time = time.time()
                     if now_time - self.last_jpeg_time >= 0.08:
                         self.last_jpeg_time = now_time
                         try:
-                            # Keep aspect ratio but limit width to 640px to reduce CPU and bandwidth load
                             h, w = display_frame.shape[:2]
+
+                            # ── Low-res thumbnail (grid) ──────────────────────────────────
                             if w > 640:
                                 scale = 640.0 / w
                                 nh, nw = int(h * scale), 640
                                 stream_preview = cv2.resize(display_frame, (nw, nh))
                             else:
                                 stream_preview = display_frame
-                                
-                            ret, jpeg = cv2.imencode('.jpg', stream_preview)
+                            ret, jpeg = cv2.imencode('.jpg', stream_preview, [cv2.IMWRITE_JPEG_QUALITY, 75])
                             if ret:
                                 self.latest_jpeg_bytes = jpeg.tobytes()
+
+                            # ── Full-resolution HQ JPEG (detail modal) ───────────────────
+                            ret_hq, jpeg_hq = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
+                            if ret_hq:
+                                self.latest_hq_jpeg_bytes = jpeg_hq.tobytes()
+
                         except Exception as e:
                             print(f"[{self.name}] Error encoding stream frame: {e}")
                     
@@ -772,6 +781,14 @@ class CameraManager:
     def get_latest_jpeg(self, camera_id):
         if camera_id in self.threads:
             return self.threads[camera_id].latest_jpeg_bytes
+        return None
+
+    def get_latest_hq_jpeg(self, camera_id):
+        """Return full-resolution JPEG for the detail/modal view.
+        Falls back to the downscaled thumbnail if HQ hasn't been encoded yet."""
+        if camera_id in self.threads:
+            thread = self.threads[camera_id]
+            return thread.latest_hq_jpeg_bytes or thread.latest_jpeg_bytes
         return None
         
     def ptz_control(self, camera_id, action, pan=0.0, tilt=0.0, zoom=1.0):

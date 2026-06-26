@@ -20,7 +20,7 @@ function CameraStream({ cameraId, token, className, style }) {
 
   const fetchFrame = useCallback(async () => {
     try {
-      const res = await fetch(`/api/cameras/${cameraId}/snapshot`, {
+      const res = await fetch(`/api/cameras/${cameraId}/snapshot?hq=true`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

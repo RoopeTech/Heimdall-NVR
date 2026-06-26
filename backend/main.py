@@ -121,25 +121,28 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
     )
 
 # Single-frame JPEG Snapshot (used by frontend polling instead of MJPEG <img>)
-# More reliable than MJPEG because fetch() returns a real HTTP status code,
-# allowing the frontend to detect missing/blank frames and reconnect properly.
+# ?hq=true  \u2192 returns full-resolution JPEG (used by the detail/modal view)
+# ?hq=false \u2192 returns 640px-wide downscaled thumbnail (used by the camera grid)
 @app.get("/api/cameras/{camera_id}/snapshot")
-async def get_snapshot(camera_id: int, current_user: dict = Depends(get_current_user)):
+async def get_snapshot(camera_id: int, hq: bool = False, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
-    
-    jpeg_bytes = camera_manager.manager.get_latest_jpeg(camera_id)
-    
+
+    if hq:
+        jpeg_bytes = camera_manager.manager.get_latest_hq_jpeg(camera_id)
+    else:
+        jpeg_bytes = camera_manager.manager.get_latest_jpeg(camera_id)
+
     if jpeg_bytes is None:
         # Camera thread exists but hasn't produced a frame yet — return placeholder
         thread = camera_manager.manager.threads.get(camera_id)
         if thread and thread.latest_jpeg_bytes:
             jpeg_bytes = thread.latest_jpeg_bytes
-    
+
     if jpeg_bytes is None:
         raise HTTPException(status_code=503, detail="No frame available yet")
-    
+
     return Response(
         content=jpeg_bytes,
         media_type="image/jpeg",
