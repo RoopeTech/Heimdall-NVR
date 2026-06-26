@@ -148,35 +148,44 @@ export default function RecordingsArchive({ cameras, token }) {
                     onClick={() => setPlayingRecording(rec)}
                     style={{ 
                       padding: '16px', 
-                      background: 'rgba(0,0,0,0.2)', 
+                      background: `linear-gradient(to top, rgba(18,22,38,0.95) 0%, rgba(18,22,38,0.4) 60%, rgba(18,22,38,0.1) 100%), url(/api/recordings/thumbnail/${rec.filepath}?token=${token})`, 
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
                       border: '1px solid var(--border-light)', 
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      minHeight: '140px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.8)'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                      <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>
-                        {getCameraName(rec.camera_id)}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '14px', color: '#fff', marginBottom: '4px' }}>
+                          {getCameraName(rec.camera_id)}
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>🕒</span> {formatTime(rec.start_time)}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>⏱️</span> {formatDuration(rec.duration)}
+                          </span>
+                        </div>
                       </div>
+                      
                       {isContinuous ? (
-                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', fontSize: '10px' }}>
+                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.4)', color: '#fff', fontSize: '10px', backdropFilter: 'blur(4px)' }}>
                           Continuous
                         </span>
                       ) : (
-                        <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', fontSize: '10px' }}>
+                        <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.4)', color: '#fff', fontSize: '10px', backdropFilter: 'blur(4px)' }}>
                           Motion Clip
                         </span>
                       )}
-                    </div>
-                    
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      <span style={{ width: '16px' }}>🕒</span>
-                      {formatTime(rec.start_time)}
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      <span style={{ width: '16px' }}>⏱️</span>
-                      {formatDuration(rec.duration)}
                     </div>
                   </div>
                 );

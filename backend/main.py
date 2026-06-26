@@ -339,6 +339,51 @@ def play_recording(filename: str, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Recording file not found")
     return FileResponse(filepath, media_type="video/mp4")
 
+@app.get("/api/recordings/thumbnail/{filename}")
+def get_recording_thumbnail(filename: str, current_user: dict = Depends(get_current_user)):
+    recording = database.get_recording_by_filename(filename)
+    
+    if recording and recording.get('is_archived', 0) == 1:
+        cam = database.get_camera(recording['camera_id'])
+        if not cam or not cam.get('archive_path'):
+            raise HTTPException(status_code=500, detail="Archive path configuration missing")
+        filepath = os.path.join(cam['archive_path'], filename)
+        thumb_dir = os.path.join(cam['archive_path'], '.thumbnails')
+    else:
+        filepath = os.path.join(camera_manager.RECORDINGS_DIR, filename)
+        thumb_dir = os.path.join(camera_manager.RECORDINGS_DIR, '.thumbnails')
+        
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Recording file not found")
+        
+    os.makedirs(thumb_dir, exist_ok=True)
+    thumb_path = os.path.join(thumb_dir, filename + ".jpg")
+    
+    if not os.path.exists(thumb_path):
+        # Generate thumbnail on the fly
+        import cv2
+        cap = cv2.VideoCapture(filepath)
+        if cap.isOpened():
+            # Seek a few seconds in if possible, otherwise just grab the first frame
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 30) # try to get frame 30
+            ret, frame = cap.read()
+            if not ret:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = cap.read()
+            if ret:
+                # Resize for thumbnail
+                h, w = frame.shape[:2]
+                if w > 640:
+                    scale = 640 / w
+                    frame = cv2.resize(frame, (640, int(h * scale)), interpolation=cv2.INTER_AREA)
+                cv2.imwrite(thumb_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            cap.release()
+            
+    if os.path.exists(thumb_path):
+        return FileResponse(thumb_path, media_type="image/jpeg")
+    
+    raise HTTPException(status_code=404, detail="Could not generate thumbnail")
+
 # Events API
 @app.get("/api/events")
 def list_events(camera_id: int = Query(None), date: str = Query(None), limit: int = 100, current_user: dict = Depends(get_current_user)):
