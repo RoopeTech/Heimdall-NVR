@@ -6,6 +6,16 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [appTitleInput, setAppTitleInput] = useState('');
   const [retentionDaysInput, setRetentionDaysInput] = useState('0');
 
+  // Bulk Edit State
+  const [selectedCameras, setSelectedCameras] = useState([]);
+  const [bulkFields, setBulkFields] = useState({
+    streamType: false,
+    rtspCreds: false,
+    recordMode: false,
+    motionSettings: false,
+    archiveSettings: false
+  });
+
   // User Management State
   const [userList, setUserList] = useState([]);
   const [userUsername, setUserUsername] = useState('');
@@ -321,6 +331,75 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       fetchUpdateStatus();
     }
   }, [activeTab]);
+
+  const handleSaveBulk = async (e) => {
+    e.preventDefault();
+    if (!confirm(`Are you sure you want to bulk update ${selectedCameras.length} cameras?`)) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const partial = {};
+      if (bulkFields.streamType) {
+        partial.stream_type = streamType;
+        partial.image_url = streamType === 'image_url' ? imageUrl : null;
+        partial.image_refresh_interval = parseInt(imageRefreshInterval) || 3600;
+      }
+      if (bulkFields.rtspCreds) {
+        partial.rtsp_user = rtspUser;
+        partial.rtsp_pass = rtspPass;
+      }
+      if (bulkFields.recordMode) {
+        partial.record_mode = recordMode;
+        partial.motion_enabled = (recordMode === 'motion' || recordMode === 'hybrid') ? 1 : 0;
+      }
+      if (bulkFields.motionSettings) {
+        partial.motion_sensitivity = sensitivity;
+        partial.motion_threshold = threshold;
+        partial.pre_roll = preRoll;
+        partial.post_roll = postRoll;
+      }
+      if (bulkFields.archiveSettings) {
+        partial.archive_days = parseInt(archiveDays) || 0;
+        partial.archive_path = archivePath;
+      }
+
+      for (const camId of selectedCameras) {
+        const cam = cameras.find(c => c.id === camId);
+        if (!cam) continue;
+        
+        const payload = { ...cam, ...partial };
+        
+        await fetch(`/api/cameras/${camId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+      
+      setSuccess(`Successfully updated ${selectedCameras.length} cameras!`);
+      setSelectedCameras([]);
+      setActiveTab('list');
+      if (onReload) onReload();
+    } catch (err) {
+      setError('Error during bulk update: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleCameraSelection = (camId) => {
+    setSelectedCameras(prev => prev.includes(camId) ? prev.filter(id => id !== camId) : [...prev, camId]);
+  };
+
+  const selectAllCameras = () => {
+    if (selectedCameras.length === cameras.length && cameras.length > 0) setSelectedCameras([]);
+    else setSelectedCameras(cameras.map(c => c.id));
+  };
 
   const handleSaveSystemSettings = async (e) => {
     e.preventDefault();
@@ -740,12 +819,31 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
 
         {activeTab === 'list' ? (
           <div>
-            <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Camera Devices</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '24px', margin: 0 }}>Camera Devices</h2>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn btn-secondary" onClick={selectAllCameras}>
+                  {selectedCameras.length === cameras.length && cameras.length > 0 ? 'Deselect All' : 'Select All'}
+                </button>
+                {selectedCameras.length > 0 && (
+                  <button className="btn btn-primary" onClick={() => { resetForm(); setActiveTab('bulk_edit'); }}>
+                    Bulk Edit ({selectedCameras.length})
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="settings-cameras-list">
               {cameras.map((cam) => (
-                <div key={cam.id} className="settings-camera-item">
-                  <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600' }}>{cam.name}</h4>
+                <div key={cam.id} className="settings-camera-item" style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedCameras.includes(cam.id)}
+                    onChange={() => toggleCameraSelection(cam.id)}
+                    style={{ marginTop: '4px', width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                    <div>
+                      <h4 style={{ fontSize: '16px', fontWeight: '600' }}>{cam.name}</h4>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                       Main (recording): <code style={{ color: 'var(--primary)' }}>{cam.main_url}</code>
                     </div>
@@ -789,6 +887,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                       </button>
                     )}
                   </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -796,6 +895,129 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
               Add New Camera Device
             </button>
           </div>
+        ) : activeTab === 'bulk_edit' ? (
+          <form onSubmit={handleSaveBulk}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '24px' }}>Bulk Edit {selectedCameras.length} Cameras</h2>
+              <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('list')}>Cancel</button>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>
+              Select the checkbox next to the settings you want to apply to all {selectedCameras.length} selected cameras.
+              Unchecked sections will remain unchanged on each individual camera.
+            </p>
+
+            <div className="settings-form-grid">
+              
+              {/* Stream Type */}
+              <div style={{ gridColumn: 'span 2', background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 'bold', fontSize: '18px', marginBottom: '16px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={bulkFields.streamType} onChange={e => setBulkFields({...bulkFields, streamType: e.target.checked})} style={{ width: '20px', height: '20px' }} />
+                  Apply Stream Type
+                </label>
+                
+                {bulkFields.streamType && (
+                  <div style={{ paddingLeft: '32px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Video Source Type</label>
+                      <select className="form-input" value={streamType} onChange={(e) => setStreamType(e.target.value)}>
+                        <option value="rtsp">RTSP / RTMP / Video Stream</option>
+                        <option value="image_url">Image / GIF Auto-Refreshing URL</option>
+                      </select>
+                    </div>
+                    {streamType === 'image_url' && (
+                      <>
+                        <div className="form-group">
+                          <label className="form-label">Image/GIF URL</label>
+                          <input type="text" className="form-input" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Refresh Interval (Seconds)</label>
+                          <input type="number" className="form-input" value={imageRefreshInterval} onChange={(e) => setImageRefreshInterval(e.target.value)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* RTSP Credentials */}
+              <div style={{ gridColumn: 'span 2', background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 'bold', fontSize: '18px', marginBottom: '16px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={bulkFields.rtspCreds} onChange={e => setBulkFields({...bulkFields, rtspCreds: e.target.checked})} style={{ width: '20px', height: '20px' }} />
+                  Apply RTSP Credentials
+                </label>
+                
+                {bulkFields.rtspCreds && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingLeft: '32px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">RTSP Username</label>
+                      <input type="text" className="form-input" value={rtspUser} onChange={(e) => setRtspUser(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">RTSP Password</label>
+                      <input type="password" className="form-input" value={rtspPass} onChange={(e) => setRtspPass(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Record Mode */}
+              <div style={{ gridColumn: 'span 2', background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 'bold', fontSize: '18px', marginBottom: '16px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={bulkFields.recordMode} onChange={e => setBulkFields({...bulkFields, recordMode: e.target.checked})} style={{ width: '20px', height: '20px' }} />
+                  Apply NVR Recording Mode
+                </label>
+                
+                {bulkFields.recordMode && (
+                  <div className="form-group" style={{ margin: 0, paddingLeft: '32px' }}>
+                    <select className="form-input" value={recordMode} onChange={(e) => setRecordMode(e.target.value)}>
+                      <option value="motion">Motion Only (Record only on motion alerts)</option>
+                      <option value="always">Always Record (Continuous 24/7, disable motion detection)</option>
+                      <option value="hybrid">Hybrid (Continuous 24/7 + log motion events)</option>
+                      <option value="view_only">View Only (No recording, live feed only)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Motion Settings */}
+              <div style={{ gridColumn: 'span 2', background: 'var(--bg-tertiary)', padding: '20px', borderRadius: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: 'bold', fontSize: '18px', marginBottom: '16px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={bulkFields.motionSettings} onChange={e => setBulkFields({...bulkFields, motionSettings: e.target.checked})} style={{ width: '20px', height: '20px' }} />
+                  Apply Motion Settings
+                </label>
+                
+                {bulkFields.motionSettings && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', paddingLeft: '32px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Sensitivity (1-100)</label>
+                      <input type="number" className="form-input" value={sensitivity} onChange={(e) => setSensitivity(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Threshold (1-100)</label>
+                      <input type="number" className="form-input" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Pre-Roll (sec)</label>
+                      <input type="number" className="form-input" value={preRoll} onChange={(e) => setPreRoll(e.target.value)} />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Post-Roll (sec)</label>
+                      <input type="number" className="form-input" value={postRoll} onChange={(e) => setPostRoll(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+            
+            <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Saving...' : 'Apply to Selected Cameras'}
+              </button>
+            </div>
+          </form>
         ) : activeTab === 'system' ? (
           <form onSubmit={handleSaveSystemSettings}>
             <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>System Settings</h2>
