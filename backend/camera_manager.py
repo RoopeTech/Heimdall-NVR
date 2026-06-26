@@ -251,12 +251,12 @@ class CameraThread(threading.Thread):
                     continue
                     
             print(f"[{self.name}] Camera stream started.")
-        print(f"  Live/motion sub-stream : {self.sub_url}")
-        print(f"  Recording main-stream  : {self.main_url}")
-        if self.main_url == self.sub_url:
-            print(f"  *** WARNING: main_url == sub_url for camera '{self.name}'.")
-            print(f"  *** Recordings will use the same (likely low-res) stream as live view.")
-            print(f"  *** Update the camera in Settings to set a separate high-res main stream URL.")
+            print(f"  Live/motion sub-stream : {self.sub_url}")
+            print(f"  Recording main-stream  : {self.main_url}")
+            if self.main_url == self.sub_url:
+                print(f"  *** WARNING: main_url == sub_url for camera '{self.name}'.")
+                print(f"  *** Recordings will use the same (likely low-res) stream as live view.")
+                print(f"  *** Update the camera in Settings to set a separate high-res main stream URL.")
             
             # Reset motion background
             self.background_model = None
@@ -269,6 +269,7 @@ class CameraThread(threading.Thread):
             motion_boxes = []
             motion_detected_this_frame = False
             self.consecutive_failures = 0
+
             
             while self.running:
                 try:
