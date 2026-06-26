@@ -565,19 +565,29 @@ async def proxy_middleware(request: Request, call_next):
                 headers.pop("host", None)
                 headers.pop("referer", None)
                 
-                req = proxy_client.build_request(
-                    request.method,
-                    target_url,
-                    headers=headers,
-                    content=await request.body()
-                )
+                body = await request.body()
+                if not body:
+                    body = None
+                    headers.pop("content-length", None)
                 
-                resp = await proxy_client.send(req, stream=True)
-                return StreamingResponse(
-                    resp.aiter_raw(),
-                    status_code=resp.status_code,
-                    headers=resp.headers
-                )
+                try:
+                    req = proxy_client.build_request(
+                        request.method,
+                        target_url,
+                        headers=headers,
+                        content=body
+                    )
+                    
+                    resp = await proxy_client.send(req, stream=True)
+                    return StreamingResponse(
+                        resp.aiter_raw(),
+                        status_code=resp.status_code,
+                        headers=resp.headers
+                    )
+                except Exception as e:
+                    import traceback
+                    print(f"[Proxy Middleware] Error: {e}")
+                    return Response(content=f"Proxy Error: {str(e)}\n\n{traceback.format_exc()}", status_code=502)
                 
     return await call_next(request)
 
@@ -598,19 +608,29 @@ async def camera_proxy(camera_id: int, path: str, request: Request, current_user
     headers = dict(request.headers)
     headers.pop("host", None)
     
-    req = proxy_client.build_request(
-        request.method,
-        target_url,
-        headers=headers,
-        content=await request.body()
-    )
+    body = await request.body()
+    if not body:
+        body = None
+        headers.pop("content-length", None)
     
-    resp = await proxy_client.send(req, stream=True)
-    return StreamingResponse(
-        resp.aiter_raw(),
-        status_code=resp.status_code,
-        headers=resp.headers
-    )
+    try:
+        req = proxy_client.build_request(
+            request.method,
+            target_url,
+            headers=headers,
+            content=body
+        )
+        
+        resp = await proxy_client.send(req, stream=True)
+        return StreamingResponse(
+            resp.aiter_raw(),
+            status_code=resp.status_code,
+            headers=resp.headers
+        )
+    except Exception as e:
+        import traceback
+        print(f"[Camera Proxy] Error: {e}")
+        return Response(content=f"Proxy Error: {str(e)}\n\n{traceback.format_exc()}", status_code=502)
 
 # Serve Frontend static assets
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
