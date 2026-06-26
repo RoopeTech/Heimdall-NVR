@@ -265,6 +265,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [rtspUser, setRtspUser] = useState('');
   const [rtspPass, setRtspPass] = useState('');
   const [osdEnabled, setOsdEnabled] = useState(true);
+  const [archiveDays, setArchiveDays] = useState(0);
+  const [archivePath, setArchivePath] = useState('');
 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -503,6 +505,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRtspUser(cam.rtsp_user || '');
     setRtspPass(cam.rtsp_pass || '');
     setOsdEnabled(cam.osd_enabled !== 0);
+    setArchiveDays(cam.archive_days || 0);
+    setArchivePath(cam.archive_path || '');
     setActiveTab('form');
   };
 
@@ -525,6 +529,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRtspUser('');
     setRtspPass('');
     setOsdEnabled(true);
+    setArchiveDays(0);
+    setArchivePath('');
   };
 
   const handleCreateNew = () => {
@@ -555,6 +561,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       rtsp_user: rtspUser || null,
       rtsp_pass: rtspPass || null,
       osd_enabled: osdEnabled ? 1 : 0,
+      archive_days: parseInt(archiveDays) || 0,
+      archive_path: archivePath || null,
     };
 
     try {
@@ -1316,6 +1324,40 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   </div>
                 </>
               )}
+              
+              <div style={{ gridColumn: 'span 2', height: '1px', background: 'var(--border-light)', margin: '10px 0' }} />
+              
+              <div style={{ gridColumn: 'span 2' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>NAS / Secondary Storage Archiving</h3>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Days to Keep Local Before Archiving (0 to Disable)</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  className="form-input" 
+                  value={archiveDays} 
+                  onChange={(e) => setArchiveDays(e.target.value)} 
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Set to 0 to keep files on the local server indefinitely (or until global retention limit is hit).
+                </span>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">NAS Share / Archive Directory Path</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={archivePath} 
+                  onChange={(e) => setArchivePath(e.target.value)} 
+                  placeholder="/mnt/nas/backyard"
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Absolute path to the destination directory. Must be mounted with write permissions on the OS level. If unreachable, archiving will be retried later.
+                </span>
+              </div>
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>

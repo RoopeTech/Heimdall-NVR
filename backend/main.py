@@ -307,7 +307,19 @@ def list_recordings(
 
 @app.get("/api/recordings/play/{filename}")
 def play_recording(filename: str, current_user: dict = Depends(get_current_user)):
-    filepath = os.path.join(camera_manager.RECORDINGS_DIR, filename)
+    # Check if the file is archived
+    recording = database.get_recording_by_filename(filename)
+    
+    if recording and recording.get('is_archived', 0) == 1:
+        # File is on NAS / archive
+        cam = database.get_camera(recording['camera_id'])
+        if not cam or not cam.get('archive_path'):
+            raise HTTPException(status_code=500, detail="Archive path configuration missing")
+        filepath = os.path.join(cam['archive_path'], filename)
+    else:
+        # File is local
+        filepath = os.path.join(camera_manager.RECORDINGS_DIR, filename)
+        
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Recording file not found")
     return FileResponse(filepath, media_type="video/mp4")

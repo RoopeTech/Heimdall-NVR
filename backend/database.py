@@ -51,7 +51,9 @@ def init_db():
         record_mode TEXT DEFAULT 'motion',     -- 'motion' | 'always' | 'hybrid'
         rtsp_user TEXT,
         rtsp_pass TEXT,
-        osd_enabled INTEGER DEFAULT 1
+        osd_enabled INTEGER DEFAULT 1,
+        archive_days INTEGER DEFAULT 0,
+        archive_path TEXT
     )
     """)
     
@@ -83,6 +85,14 @@ def init_db():
         conn.commit()
     except sqlite3.OperationalError:
         pass # Column already exists
+        
+    # Migration: add archive_days and archive_path to existing databases
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN archive_days INTEGER DEFAULT 0")
+        cursor.execute("ALTER TABLE cameras ADD COLUMN archive_path TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Columns already exist
     
     # Create recordings table
     cursor.execute("""
@@ -93,9 +103,17 @@ def init_db():
         end_time TEXT,
         duration REAL,
         filepath TEXT NOT NULL,
+        is_archived INTEGER DEFAULT 0,
         FOREIGN KEY (camera_id) REFERENCES cameras (id) ON DELETE CASCADE
     )
     """)
+    
+    # Migration: add is_archived to recordings table
+    try:
+        cursor.execute("ALTER TABLE recordings ADD COLUMN is_archived INTEGER DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
     
     # Create events table
     cursor.execute("""
@@ -382,9 +400,28 @@ def get_recordings(camera_id=None, date_str=None):
     conn.close()
     return recordings
 
+def get_recording_by_filename(filename):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM recordings WHERE filepath = ?", (filename,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_recordings_to_archive(camera_id, cutoff_time):
+    conn = get_db_connection()
+    query = "SELECT * FROM recordings WHERE camera_id = ? AND start_time < ? AND is_archived = 0"
+    rows = conn.execute(query, (camera_id, cutoff_time)).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def mark_recording_archived(recording_id):
+    conn = get_db_connection()
+    conn.execute("UPDATE recordings SET is_archived = 1 WHERE id = ?", (recording_id,))
+    conn.commit()
+    conn.close()
+
 def get_expired_recordings(cutoff_time):
     conn = get_db_connection()
-    expired = [dict(row) for row in conn.execute("SELECT id, filepath FROM recordings WHERE start_time < ?", (cutoff_time,)).fetchall()]
+    expired = [dict(row) for row in conn.execute("SELECT * FROM recordings WHERE start_time < ?", (cutoff_time,)).fetchall()]
     conn.close()
     return expired
 
@@ -421,8 +458,8 @@ def import_config(config_data):
         cursor.execute("DELETE FROM cameras")
         for cam in config_data["cameras"]:
             cursor.execute("""
-            INSERT INTO cameras (id, name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass, osd_enabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cameras (id, name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass, osd_enabled, archive_days, archive_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 cam.get('id'), cam['name'], cam['main_url'], cam['sub_url'],
                 cam.get('ptz_ip'), cam.get('ptz_port'), cam.get('ptz_user'), cam.get('ptz_pass'),
@@ -431,7 +468,8 @@ def import_config(config_data):
                 cam.get('motion_threshold', 25), cam.get('pre_roll', 0), cam.get('post_roll', 5),
                 cam.get('record_mode', 'motion'),
                 cam.get('rtsp_user'), cam.get('rtsp_pass'),
-                cam.get('osd_enabled', 1)
+                cam.get('osd_enabled', 1),
+                cam.get('archive_days', 0), cam.get('archive_path')
             ))
             
         # 2. Restore system settings

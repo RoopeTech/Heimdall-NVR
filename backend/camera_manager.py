@@ -737,6 +737,8 @@ class CameraManager:
         time.sleep(10)
         while self.cleanup_running:
             try:
+                self.archive_recordings()
+                
                 retention_days_str = database.get_system_setting("retention_days")
                 if retention_days_str:
                     retention_days = int(retention_days_str)
@@ -751,7 +753,48 @@ class CameraManager:
                     break
                 time.sleep(5)
         print("[Cleanup] Background storage cleanup worker stopped.")
+        
+    def archive_recordings(self):
+        from datetime import datetime, timedelta
+        import shutil
+        cameras = database.get_cameras()
+        for cam in cameras:
+            archive_days = cam.get('archive_days', 0)
+            archive_path = cam.get('archive_path')
+            
+            if archive_days > 0 and archive_path:
+                # Ensure archive path exists or is mounted
+                if not os.path.exists(archive_path):
+                    print(f"[Archive] NAS/Archive path unreachable for camera {cam['name']}: {archive_path}. Skipping.")
+                    continue
                 
+                cutoff_time = (datetime.now() - timedelta(days=archive_days)).isoformat()
+                to_archive = database.get_recordings_to_archive(cam['id'], cutoff_time)
+                
+                if to_archive:
+                    print(f"[Archive] Found {len(to_archive)} recordings to archive for camera {cam['name']} (older than {archive_days} days).")
+                
+                for rec in to_archive:
+                    local_filepath = os.path.join(RECORDINGS_DIR, rec['filepath'])
+                    dest_filepath = os.path.join(archive_path, rec['filepath'])
+                    
+                    if os.path.exists(local_filepath):
+                        try:
+                            # Copy to NAS
+                            shutil.copy2(local_filepath, dest_filepath)
+                            
+                            # Verify copy size
+                            if os.path.getsize(local_filepath) == os.path.getsize(dest_filepath):
+                                # Update DB
+                                database.mark_recording_archived(rec['id'])
+                                # Delete local
+                                os.remove(local_filepath)
+                                print(f"[Archive] Successfully moved {rec['filepath']} to {archive_path}")
+                            else:
+                                print(f"[Archive] Size mismatch after copying {rec['filepath']}. Aborting move.")
+                        except Exception as e:
+                            print(f"[Archive] Error moving file {rec['filepath']} to NAS: {e}")
+                            
     def prune_old_recordings(self, retention_days):
         from datetime import datetime, timedelta
         # Calculate cutoff time in ISO format
@@ -762,16 +805,29 @@ class CameraManager:
             return
             
         print(f"[Cleanup] Found {len(expired)} expired recordings older than {retention_days} days (cutoff: {cutoff_time[:19]}).")
+        
+        # Cache camera info to avoid many DB lookups
+        cam_cache = {}
         for rec in expired:
             # Delete from database
             database.delete_recording(rec['id'])
             
             # Delete file on disk
-            filepath = os.path.join(RECORDINGS_DIR, rec['filepath'])
-            if os.path.exists(filepath):
+            filepath = None
+            if rec.get('is_archived', 0) == 1:
+                cam_id = rec['camera_id']
+                if cam_id not in cam_cache:
+                    cam_cache[cam_id] = database.get_camera(cam_id)
+                cam = cam_cache[cam_id]
+                if cam and cam.get('archive_path'):
+                    filepath = os.path.join(cam['archive_path'], rec['filepath'])
+            else:
+                filepath = os.path.join(RECORDINGS_DIR, rec['filepath'])
+                
+            if filepath and os.path.exists(filepath):
                 try:
                     os.remove(filepath)
-                    print(f"[Cleanup] Deleted expired recording file: {rec['filepath']}")
+                    print(f"[Cleanup] Deleted expired recording file: {filepath}")
                 except Exception as e:
                     print(f"[Cleanup] Error deleting file {filepath}: {e}")
             
