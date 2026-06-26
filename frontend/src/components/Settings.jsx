@@ -272,6 +272,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [imageUrl, setImageUrl] = useState('');
   const [imageRefreshInterval, setImageRefreshInterval] = useState(3600);
 
+  // Auto-force View Only mode for image URL cameras
+  React.useEffect(() => {
+    if (streamType === 'image_url') {
+      setRecordMode('view_only');
+      setMotionEnabled(false);
+    }
+  }, [streamType]);
+
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [updatingState, setUpdatingState] = useState('');
@@ -744,7 +752,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                       Sub (live view): <code style={{ color: 'var(--primary)' }}>{cam.sub_url}</code>
                     </div>
-                    {cam.main_url === cam.sub_url && (
+                    {cam.main_url === cam.sub_url && cam.stream_type !== 'image_url' && (
                       <div style={{
                         marginTop: '8px',
                         padding: '6px 10px',
@@ -1286,6 +1294,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 </span>
               </div>
 
+              {streamType !== 'image_url' && (
+              <>
               <div style={{ gridColumn: 'span 2', height: '1px', background: 'var(--border-light)', margin: '10px 0' }} />
 
               <div style={{ gridColumn: 'span 2' }}>
@@ -1455,6 +1465,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 </>
               )}
               
+              </>
+              )}
+
               <div style={{ gridColumn: 'span 2', height: '1px', background: 'var(--border-light)', margin: '10px 0' }} />
               
               <div style={{ gridColumn: 'span 2' }}>
