@@ -4,6 +4,7 @@ import CameraDetail from './components/CameraDetail';
 import EventLog from './components/EventLog';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import RecordingsArchive from './components/RecordingsArchive';
 import './App.css';
 
 export default function App() {
@@ -343,6 +344,12 @@ export default function App() {
           >
             🔔 Activity Logs
           </button>
+          <button 
+            className={`nav-tab ${activeTab === 'recordings' ? 'active' : ''}`} 
+            onClick={() => setActiveTab('recordings')}
+          >
+            <span className="tab-icon">📼</span> Recordings
+          </button>
           {user.role === 'admin' && (
             <button 
               className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -434,6 +441,13 @@ export default function App() {
               />
             </div>
           </div>
+        )}
+
+        {activeTab === 'recordings' && (
+          <RecordingsArchive 
+            cameras={cameras} 
+            token={token}
+          />
         )}
 
         {activeTab === 'settings' && user.role === 'admin' && (
