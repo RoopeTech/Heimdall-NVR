@@ -192,7 +192,7 @@ def init_db():
     # Insert default settings
     cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = 'app_title'")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO system_settings (key, value) VALUES ('app_title', 'Antigravity NVR')")
+        cursor.execute("INSERT INTO system_settings (key, value) VALUES ('app_title', 'Heimdall NVR')")
         conn.commit()
         
     cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = 'retention_days'")

@@ -1,4 +1,4 @@
-# Antigravity NVR - IP Camera Viewer & NVR Dashboard
+# Heimdall NVR - IP Camera Viewer & NVR Dashboard
 
 A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)** and **IP Camera Viewer** designed for both desktop (native PyWebView UI) and web-accessible server deployments. Supports standard ONVIF/RTSP streams and runs beautifully on Windows and Linux (including headless server environments).
 
@@ -96,7 +96,7 @@ From the cloned `RTNVR` directory, run:
 ```powershell
 .\install.ps1
 ```
-*This will also register a double-clickable **Antigravity NVR** shortcut on your Desktop.*
+*This will also register a double-clickable **Heimdall NVR** shortcut on your Desktop.*
 
 #### Linux (Debian/Ubuntu/Fedora/Arch)
 From the cloned `RTNVR` directory, make the script executable and run it:
@@ -129,15 +129,15 @@ backend/venv/bin/python backend/main.py --headless
 To configure the application to run automatically as a background daemon on boot:
 1. Copy the provided template Systemd service file:
    ```bash
-   sudo cp nvr-headless.service /etc/systemd/system/antigravity-nvr.service
+   sudo cp nvr-headless.service /etc/systemd/system/Heimdall-nvr.service
    ```
-2. Edit `/etc/systemd/system/antigravity-nvr.service` to update your `User` and `WorkingDirectory` paths.
+2. Edit `/etc/systemd/system/Heimdall-nvr.service` to update your `User` and `WorkingDirectory` paths.
 3. Enable and start the service:
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl enable --now antigravity-nvr.service
+   sudo systemctl enable --now Heimdall-nvr.service
    ```
-4. Verify logs with `sudo journalctl -u antigravity-nvr.service -f`.
+4. Verify logs with `sudo journalctl -u Heimdall-nvr.service -f`.
 
 ---
 

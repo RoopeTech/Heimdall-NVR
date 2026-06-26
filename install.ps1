@@ -1,11 +1,11 @@
-# Antigravity NVR Windows Installer
+# Heimdall NVR Windows Installer
 # Run this script to automatically install prerequisites, dependencies, compile the UI, and create shortcuts.
 
 $ErrorActionPreference = "Stop"
 Clear-Host
 
 Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "      ANTIGRAVITY NVR - WINDOWS INSTALLER     " -ForegroundColor Cyan
+Write-Host "      Heimdall NVR - WINDOWS INSTALLER     " -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -174,7 +174,7 @@ $LauncherPath = Join-Path $ProjectRoot "run.bat"
 $LauncherContent = @"
 @echo off
 cd /d "%~dp0"
-echo Starting Antigravity NVR...
+echo Starting Heimdall NVR...
 echo Logging outputs to nvr.log...
 start "" "%~dp0backend\venv\Scripts\pythonw.exe" backend\main.py > nvr.log 2>&1
 "@
@@ -185,13 +185,13 @@ Write-Host "[+] Launcher run.bat created." -ForegroundColor Green
 Write-Host "[*] Creating Desktop shortcut..." -ForegroundColor Cyan
 try {
     $WshShell = New-Object -ComObject WScript.Shell
-    $ShortcutPath = Join-Path ([System.Environment]::GetFolderPath("Desktop")) "Antigravity NVR.lnk"
+    $ShortcutPath = Join-Path ([System.Environment]::GetFolderPath("Desktop")) "Heimdall NVR.lnk"
     $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = $LauncherPath
     $Shortcut.WorkingDirectory = $ProjectRoot
     # Use shell32.dll index 219 (video camera symbol) as icon
     $Shortcut.IconLocation = "shell32.dll, 219"
-    $Shortcut.Description = "Launch Antigravity NVR Camera Dashboard"
+    $Shortcut.Description = "Launch Heimdall NVR Camera Dashboard"
     $Shortcut.Save()
     Write-Host "[+] Desktop shortcut created successfully!" -ForegroundColor Green
 } catch {
@@ -202,7 +202,7 @@ Write-Host ""
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host "          INSTALLATION COMPLETE!             " -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
-Write-Host " You can now run the app via the 'Antigravity NVR' shortcut on your Desktop" -ForegroundColor Gray
+Write-Host " You can now run the app via the 'Heimdall NVR' shortcut on your Desktop" -ForegroundColor Gray
 Write-Host " or by double-clicking 'run.bat' in the project directory." -ForegroundColor Gray
 Write-Host ""
 Read-Host "Press Enter to exit..."

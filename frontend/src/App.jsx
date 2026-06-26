@@ -12,7 +12,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [activeTab, setActiveTab] = useState('grid');
   const [selectedCamera, setSelectedCamera] = useState(null);
-  const [appTitle, setAppTitle] = useState('Antigravity NVR');
+  const [appTitle, setAppTitle] = useState('Heimdall NVR');
   
   // Auth states
   const [token, setToken] = useState(localStorage.getItem('session_token') || '');

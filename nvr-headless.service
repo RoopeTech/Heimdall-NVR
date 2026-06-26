@@ -1,5 +1,5 @@
 [Unit]
-Description=Antigravity IP Camera NVR & Viewer
+Description=Heimdall IP Camera NVR & Viewer
 After=network.target
 
 [Service]

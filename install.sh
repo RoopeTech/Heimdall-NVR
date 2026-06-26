@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Antigravity NVR Linux Installer
+# Heimdall NVR Linux Installer
 # Automatically installs python packages, npm packages, compiles frontend assets, and sets up launch configurations.
 
 set -e
@@ -13,7 +13,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}       ANTIGRAVITY NVR - LINUX INSTALLER     ${NC}"
+echo -e "${CYAN}       Heimdall NVR - LINUX INSTALLER     ${NC}"
 echo -e "${CYAN}=============================================${NC}"
 echo ""
 
@@ -89,7 +89,7 @@ cat << 'EOF' > run.sh
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
-echo "Starting Antigravity NVR..."
+echo "Starting Heimdall NVR..."
 source backend/venv/bin/activate
 python3 backend/main.py
 EOF
@@ -101,11 +101,11 @@ echo -e "${CYAN}[*] Creating desktop launcher application entry...${NC}"
 DESKTOP_DIR="$HOME/.local/share/applications"
 mkdir -p "$DESKTOP_DIR"
 
-cat << EOF > "$DESKTOP_DIR/antigravity-nvr.desktop"
+cat << EOF > "$DESKTOP_DIR/Heimdall-nvr.desktop"
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Antigravity NVR
+Name=Heimdall NVR
 Comment=IP Camera Viewer & NVR Dashboard
 Exec=$PROJECT_ROOT/run.sh
 Path=$PROJECT_ROOT
@@ -113,9 +113,9 @@ Icon=camera-video
 Terminal=false
 Categories=Utility;Network;
 EOF
-chmod +x "$DESKTOP_DIR/antigravity-nvr.desktop"
-echo -e "${GREEN}[+] Desktop shortcut created at $DESKTOP_DIR/antigravity-nvr.desktop${NC}"
-echo -e "    You will be able to search and launch 'Antigravity NVR' from your application menu."
+chmod +x "$DESKTOP_DIR/Heimdall-nvr.desktop"
+echo -e "${GREEN}[+] Desktop shortcut created at $DESKTOP_DIR/Heimdall-nvr.desktop${NC}"
+echo -e "    You will be able to search and launch 'Heimdall NVR' from your application menu."
 
 echo -e "\n${GREEN}=============================================${NC}"
 echo -e "${GREEN}          INSTALLATION COMPLETE!             ${NC}"

@@ -42,7 +42,7 @@ def require_admin(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
-app = FastAPI(title="Antigravity NVR API")
+app = FastAPI(title="Heimdall NVR API")
 
 # Enable CORS for development
 app.add_middleware(
@@ -333,7 +333,7 @@ def list_events(camera_id: int = Query(None), limit: int = 100, current_user: di
 @app.get("/api/settings")
 def get_system_settings(current_user: dict = Depends(get_current_user)):
     return {
-        "app_title": database.get_system_setting("app_title") or "Antigravity NVR",
+        "app_title": database.get_system_setting("app_title") or "Heimdall NVR",
         "retention_days": database.get_system_setting("retention_days") or "0"
     }
 
@@ -556,7 +556,7 @@ def launch_ui():
     try:
         import webview
         print("[NVR] Launching PyWebView Local UI window...")
-        title = database.get_system_setting("app_title") or "Antigravity IP Camera NVR Dashboard"
+        title = database.get_system_setting("app_title") or "Heimdall IP Camera NVR Dashboard"
         webview.create_window(title, url, width=1280, height=800)
         webview.start()
         webview_launched = True
