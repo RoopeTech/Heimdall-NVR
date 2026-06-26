@@ -158,6 +158,26 @@ async def get_snapshot(camera_id: int, hq: bool = False, current_user: dict = De
         }
     )
 
+# Proxy Image (returns RAW bytes for Image URL cameras to support APNG/GIF animations)
+@app.get("/api/cameras/{camera_id}/proxy_image")
+async def get_proxy_image(camera_id: int, current_user: dict = Depends(get_current_user)):
+    camera = database.get_camera(camera_id)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    thread = camera_manager.manager.threads.get(camera_id)
+    if not thread or not getattr(thread, 'latest_raw_bytes', None):
+        raise HTTPException(status_code=503, detail="No frame available yet")
+
+    return Response(
+        content=thread.latest_raw_bytes,
+        media_type=getattr(thread, 'latest_content_type', 'image/jpeg'),
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+        }
+    )
+
 # ── Camera Group Endpoints ────────────────────────────────────────────────────
 
 @app.get("/api/groups")

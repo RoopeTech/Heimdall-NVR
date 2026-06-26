@@ -10,17 +10,21 @@ import PTZControls from './PTZControls';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ cameraId, token, className, style }) {
+function CameraStream({ camera, token, className, style }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
   const prevBlobRef                  = useRef(null);
   const consecutiveErrorsRef         = useRef(0);
   const mountedRef                   = useRef(true);
+  const [refreshKey, setRefreshKey]  = useState(Date.now());
+
+  const isImageStream = camera?.stream_type === 'image_url';
 
   const fetchFrame = useCallback(async () => {
+    if (isImageStream) return;
     try {
-      const res = await fetch(`/api/cameras/${cameraId}/snapshot?hq=true`, {
+      const res = await fetch(`/api/cameras/${camera?.id}/snapshot?hq=true`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -38,15 +42,24 @@ function CameraStream({ cameraId, token, className, style }) {
       consecutiveErrorsRef.current += 1;
       if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) setStatus('error');
     }
-  }, [cameraId, token]);
+    }
+  }, [camera?.id, token, isImageStream]);
 
   useEffect(() => {
     mountedRef.current = true;
-    setStatus('loading');
-    setBlobUrl(null);
-    consecutiveErrorsRef.current = 0;
-    fetchFrame();
-    intervalRef.current = setInterval(fetchFrame, POLL_MS);
+    if (isImageStream) {
+      setStatus('live');
+      const interval = Math.max(10000, (camera.image_refresh_interval || 3600) * 1000);
+      intervalRef.current = setInterval(() => {
+        setRefreshKey(Date.now());
+      }, interval);
+    } else {
+      setStatus('loading');
+      setBlobUrl(null);
+      consecutiveErrorsRef.current = 0;
+      fetchFrame();
+      intervalRef.current = setInterval(fetchFrame, POLL_MS);
+    }
     return () => {
       mountedRef.current = false;
       clearInterval(intervalRef.current);
@@ -55,7 +68,7 @@ function CameraStream({ cameraId, token, className, style }) {
         prevBlobRef.current = null;
       }
     };
-  }, [cameraId, fetchFrame]);
+  }, [camera?.id, fetchFrame, isImageStream, camera?.image_refresh_interval]);
 
   // Overlay style — fills the positioned ancestor (camera-stream-container)
   const overlayStyle = {
@@ -67,15 +80,18 @@ function CameraStream({ cameraId, token, className, style }) {
 
   return (
     <>
-      {blobUrl && (
+      {isImageStream ? (
         <img
-          src={blobUrl}
+          src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
           className={className}
           style={style}
-          alt="camera feed"
+          alt="Proxy Stream"
           draggable={false}
+          onError={() => setStatus('error')}
         />
-      )}
+      ) : blobUrl ? (
+        <img src={blobUrl} className={className} style={style} alt="camera feed" draggable={false} />
+      ) : null}
       {status === 'loading' && (
         <div style={{ ...overlayStyle, background: 'rgba(10,14,26,0.85)', color: 'var(--text-muted)', fontSize: '13px' }}>
           <span style={{ fontSize: '24px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
@@ -363,12 +379,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
         headers: { 'Authorization': `Bearer ${token}` }
       });
       // Force the camera stream to briefly show loading state by clearing the blob
-      if (prevBlobRef.current) {
-        URL.revokeObjectURL(prevBlobRef.current);
-        prevBlobRef.current = null;
-      }
-      setBlobUrl(null);
-      setStatus('loading');
+      // In the context of this refactor, if you have issues, consider exposing a method to trigger re-fetch
     } catch (e) {
       console.error("Error restarting stream:", e);
     }
@@ -444,10 +455,10 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
 
             {!playbackMode ? (
-              <CameraStream
-                cameraId={camera.id}
-                token={token}
-                className="camera-stream-img"
+              <CameraStream 
+                camera={camera} 
+                token={token} 
+                className="nvr-detail-img" 
                 style={transformStyle}
               />
             ) : (

@@ -7,17 +7,21 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ cameraId, token, className }) {
+function CameraStream({ camera, token, className }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
   const prevBlobRef                  = useRef(null);
   const consecutiveErrorsRef         = useRef(0);
   const mountedRef                   = useRef(true);
+  const [refreshKey, setRefreshKey]  = useState(Date.now());
+
+  const isImageStream = camera?.stream_type === 'image_url';
 
   const fetchFrame = useCallback(async () => {
+    if (isImageStream) return;
     try {
-      const res = await fetch(`/api/cameras/${cameraId}/snapshot`, {
+      const res = await fetch(`/api/cameras/${camera?.id}/snapshot`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -35,15 +39,24 @@ function CameraStream({ cameraId, token, className }) {
       consecutiveErrorsRef.current += 1;
       if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) setStatus('error');
     }
-  }, [cameraId, token]);
+    }
+  }, [camera?.id, token, isImageStream]);
 
   useEffect(() => {
     mountedRef.current = true;
-    setStatus('loading');
-    setBlobUrl(null);
-    consecutiveErrorsRef.current = 0;
-    fetchFrame();
-    intervalRef.current = setInterval(fetchFrame, POLL_MS);
+    if (isImageStream) {
+      setStatus('live');
+      const interval = Math.max(10000, (camera.image_refresh_interval || 3600) * 1000);
+      intervalRef.current = setInterval(() => {
+        setRefreshKey(Date.now());
+      }, interval);
+    } else {
+      setStatus('loading');
+      setBlobUrl(null);
+      consecutiveErrorsRef.current = 0;
+      fetchFrame();
+      intervalRef.current = setInterval(fetchFrame, POLL_MS);
+    }
     return () => {
       mountedRef.current = false;
       clearInterval(intervalRef.current);
@@ -52,7 +65,7 @@ function CameraStream({ cameraId, token, className }) {
         prevBlobRef.current = null;
       }
     };
-  }, [cameraId, fetchFrame]);
+  }, [camera?.id, fetchFrame, isImageStream, camera?.image_refresh_interval]);
 
   const overlayStyle = {
     position: 'absolute',
@@ -64,9 +77,17 @@ function CameraStream({ cameraId, token, className }) {
 
   return (
     <>
-      {blobUrl && (
+      {isImageStream ? (
+        <img
+          src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
+          className={className}
+          alt="Proxy Stream"
+          draggable={false}
+          onError={() => setStatus('error')}
+        />
+      ) : blobUrl ? (
         <img src={blobUrl} className={className} alt="camera feed" draggable={false} />
-      )}
+      ) : null}
       {status === 'loading' && (
         <div style={{ ...overlayStyle, color: 'var(--text-muted)', fontSize: '12px' }}>
           <span style={{ fontSize: '28px', animation: 'pulse 1.5s ease-in-out infinite' }}>📡</span>
@@ -247,7 +268,7 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
               >
                 {/* Full-bleed stream */}
                 <div className="nvr-cell-stream">
-                  <CameraStream cameraId={cam.id} token={token} className="nvr-cell-img" />
+                  <CameraStream camera={cam} token={token} className="nvr-cell-img" />
                 </div>
 
                 {/* Top-left: camera name label */}

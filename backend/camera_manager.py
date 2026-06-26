@@ -194,6 +194,8 @@ class ImageUrlThread(threading.Thread):
         self.running = True
         self.latest_jpeg_bytes = None
         self.latest_hq_jpeg_bytes = None
+        self.latest_raw_bytes = None
+        self.latest_content_type = 'image/jpeg'
         self.is_mock = False
         self.is_motion_detected = False
         self.is_recording = False
@@ -210,6 +212,8 @@ class ImageUrlThread(threading.Thread):
         _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
         self.latest_jpeg_bytes = buf.tobytes()
         self.latest_hq_jpeg_bytes = buf.tobytes()
+        self.latest_raw_bytes = buf.tobytes()
+        self.latest_content_type = 'image/jpeg'
 
     def _fetch_image(self):
         """Fetch the remote image and decode it with OpenCV."""
@@ -218,8 +222,12 @@ class ImageUrlThread(threading.Thread):
             req = urllib.request.Request(self.image_url, headers={'User-Agent': 'HeimdallNVR/1.0'})
             with urllib.request.urlopen(req, timeout=30) as resp:
                 raw = resp.read()
+                content_type = resp.headers.get('Content-Type', 'image/jpeg')
 
-            # Decode image bytes via numpy/OpenCV (supports JPEG, PNG, GIF first-frame, etc.)
+            self.latest_raw_bytes = raw
+            self.latest_content_type = content_type
+
+            # Decode image bytes via numpy/OpenCV for motion/thumbnails
             arr = np.frombuffer(raw, dtype=np.uint8)
             frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if frame is None:
@@ -239,7 +247,7 @@ class ImageUrlThread(threading.Thread):
             _, thumb_buf = cv2.imencode('.jpg', thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
             self.latest_jpeg_bytes = thumb_buf.tobytes()
             self.consecutive_failures = 0
-            print(f"[ImageURL] [{self.name}] Fetched OK ({len(raw)} bytes)")
+            print(f"[ImageURL] [{self.name}] Fetched OK ({len(raw)} bytes, type: {content_type})")
 
         except Exception as e:
             self.consecutive_failures += 1
