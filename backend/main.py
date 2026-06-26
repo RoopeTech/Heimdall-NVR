@@ -12,6 +12,8 @@ from typing import Optional
 
 import database
 import camera_manager
+import tcp_proxy
+import asyncio
 
 # Authentication Dependencies
 def get_current_user(
@@ -55,9 +57,10 @@ app.add_middleware(
 
 # Startup event
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     database.init_db()
     camera_manager.manager.start_all()
+    asyncio.create_task(tcp_proxy.proxy_manager.cleanup_loop())
 
 # Shutdown event
 @app.on_event("shutdown")
@@ -530,6 +533,24 @@ def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True}
+
+# Proxy Endpoints
+@app.post("/api/cameras/{camera_id}/proxy/start")
+async def start_camera_proxy(camera_id: int, current_user: dict = Depends(get_current_user)):
+    camera = database.get_camera(camera_id)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+        
+    try:
+        port = await tcp_proxy.proxy_manager.start_proxy(camera_id, camera["main_url"])
+        return {"proxy_port": port}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/cameras/{camera_id}/proxy/stop")
+async def stop_camera_proxy(camera_id: int, current_user: dict = Depends(get_current_user)):
+    await tcp_proxy.proxy_manager.stop_proxy(camera_id)
+    return {"status": "stopped"}
 
 # Serve Frontend static assets
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")

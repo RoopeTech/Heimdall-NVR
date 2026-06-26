@@ -594,6 +594,24 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     }
   };
 
+  const handleOpenProxy = async (cam) => {
+    try {
+      const res = await fetch(`/api/cameras/${cam.id}/proxy/start`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to start proxy tunnel');
+      const data = await res.json();
+      
+      const port = data.proxy_port;
+      const proxyUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
+      window.open(proxyUrl, '_blank');
+      
+    } catch (e) {
+      alert(`Error opening camera settings: ${e.message}`);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this camera? This will remove all recording links as well.')) return;
     
@@ -709,7 +727,10 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button className="btn btn-primary" onClick={() => handleOpenProxy(cam)} title="Open the camera's built-in web configuration page via secure proxy">
+                      ⚙️ Web UI
+                    </button>
                     <button className="btn btn-secondary" onClick={() => loadCameraIntoForm(cam)}>
                       Edit
                     </button>
