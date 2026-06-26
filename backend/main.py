@@ -592,6 +592,10 @@ async def proxy_middleware(request: Request, call_next):
                 
     return await call_next(request)
 
+@app.api_route("/api/proxy/{camera_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def camera_proxy_base(camera_id: int, request: Request, current_user: dict = Depends(get_current_user)):
+    return await camera_proxy(camera_id, "", request, current_user)
+
 @app.api_route("/api/proxy/{camera_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def camera_proxy(camera_id: int, path: str, request: Request, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
