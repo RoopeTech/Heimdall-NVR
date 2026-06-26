@@ -2,7 +2,15 @@ import sqlite3
 import os
 import hashlib
 import secrets
+import base64
 from datetime import datetime
+
+try:
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+except ImportError:
+    pass
 
 # Password Hashing Helpers
 def hash_password(password: str, salt: str = None) -> tuple[str, str]:
