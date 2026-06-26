@@ -360,12 +360,15 @@
 /* Mobile: single column */
 @media (max-width: 640px) {
   .nvr-mosaic {
-    grid-template-columns: 1fr !important;
-    grid-auto-rows: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
     overflow-y: auto !important;
   }
   .nvr-cell {
-    aspect-ratio: 16 / 9;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9 !important;
   }
   .nvr-toolbar {
     flex-direction: column;
@@ -442,9 +445,18 @@
     overflow-y: auto !important;
     resize: none !important;
   }
-  .modal-body-left, .modal-body-right {
+  .modal-header, .modal-body-left, .modal-body-right {
     overflow: visible !important;
-    min-height: max-content;
+    min-height: max-content !important;
+    flex-shrink: 0 !important;
+    height: auto !important;
+  }
+  .modal-body-left .camera-stream-container {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 16 / 9 !important;
   }
 }
 
