@@ -432,13 +432,28 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
             
             {playbackMode && (
-              <button 
-                className="btn btn-primary" 
-                onClick={() => handlePlayRecording(null)}
-                style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 20 }}
-              >
-                📡 Back to Live Feed
-              </button>
+              <div style={{ position: 'absolute', bottom: '16px', right: '16px', zIndex: 20, display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = videoSrc;
+                    a.download = `${camera.name.replace(/\\s+/g, '_')}-clip.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  title="Download this recording to your PC"
+                >
+                  💾 Download Clip
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => handlePlayRecording(null)}
+                >
+                  📡 Back to Live Feed
+                </button>
+              </div>
             )}
           </div>
 
