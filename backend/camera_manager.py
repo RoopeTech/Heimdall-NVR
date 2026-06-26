@@ -251,6 +251,12 @@ class CameraThread(threading.Thread):
                     continue
                     
             print(f"[{self.name}] Camera stream started.")
+        print(f"  Live/motion sub-stream : {self.sub_url}")
+        print(f"  Recording main-stream  : {self.main_url}")
+        if self.main_url == self.sub_url:
+            print(f"  *** WARNING: main_url == sub_url for camera '{self.name}'.")
+            print(f"  *** Recordings will use the same (likely low-res) stream as live view.")
+            print(f"  *** Update the camera in Settings to set a separate high-res main stream URL.")
             
             # Reset motion background
             self.background_model = None
@@ -598,10 +604,15 @@ class CameraThread(threading.Thread):
                 
                 # Draw a dark overlay banner at the bottom
                 cv2.rectangle(reconnect_frame, (0, h - 45), (w, h), (10, 15, 20), -1)
-                cv2.putText(reconnect_frame, "⚠️ Connection lost. Reconnecting...", (20, h - 15), 
+                cv2.putText(reconnect_frame, "Connection lost. Reconnecting...", (20, h - 15), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 165, 255), 1, cv2.LINE_AA)
-                
-                # Keep aspect ratio but limit width to 640px to reduce CPU and bandwidth load
+
+                # Full-res HQ placeholder
+                ret_hq, jpeg_hq = cv2.imencode('.jpg', reconnect_frame)
+                if ret_hq:
+                    self.latest_hq_jpeg_bytes = jpeg_hq.tobytes()
+
+                # Downscaled thumbnail for grid
                 if w > 640:
                     scale = 640.0 / w
                     nh, nw = int(h * scale), 640

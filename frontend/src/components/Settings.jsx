@@ -679,11 +679,27 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   <div>
                     <h4 style={{ fontSize: '16px', fontWeight: '600' }}>{cam.name}</h4>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      Main: <code style={{ color: 'var(--primary)' }}>{cam.main_url}</code>
+                      Main (recording): <code style={{ color: 'var(--primary)' }}>{cam.main_url}</code>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Sub: <code style={{ color: 'var(--primary)' }}>{cam.sub_url}</code>
+                      Sub (live view): <code style={{ color: 'var(--primary)' }}>{cam.sub_url}</code>
                     </div>
+                    {cam.main_url === cam.sub_url && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '6px 10px',
+                        background: 'rgba(245, 158, 11, 0.12)',
+                        border: '1px solid rgba(245, 158, 11, 0.4)',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: 'var(--accent-warning)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}>
+                        ⚠️ Main and Sub stream URLs are identical — recordings will use the same low-res stream as live view. Set a separate high-res Main URL for full-quality clips.
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button className="btn btn-secondary" onClick={() => loadCameraIntoForm(cam)}>
@@ -1066,6 +1082,28 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   Used for live grid streaming and motion detection analysis. Use <code>mock://camera1_sub</code> for testing.
                 </span>
               </div>
+
+              {mainUrl && subUrl && mainUrl === subUrl && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  color: 'var(--accent-warning)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  marginBottom: '8px',
+                }}>
+                  <span style={{ flexShrink: 0 }}>⚠️</span>
+                  <span>
+                    <strong>Main and Sub URLs are the same.</strong> Recordings will use the same low-resolution stream as live view. 
+                    Set your camera's high-resolution main stream (e.g. <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '3px' }}>rtsp://ip:554/h264</code>) 
+                    in Main URL and the lower-res substream (e.g. <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '3px' }}>rtsp://ip:554/h264_sub</code>) in Sub URL for best quality clips.
+                  </span>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">RTSP Stream Username (Optional)</label>
