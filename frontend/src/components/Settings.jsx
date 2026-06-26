@@ -263,6 +263,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [postRoll, setPostRoll] = useState(5);
   const [recordMode, setRecordMode] = useState('motion');
   const [rtspUser, setRtspUser] = useState('');
+  const [webUiPath, setWebUiPath] = useState('/');
   const [rtspPass, setRtspPass] = useState('');
   const [osdEnabled, setOsdEnabled] = useState(true);
   const [archiveDays, setArchiveDays] = useState(0);
@@ -483,6 +484,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRtspUser(cam.rtsp_user || '');
     setRtspPass(cam.rtsp_pass || '');
     setOsdEnabled(cam.osd_enabled !== 0);
+    setWebUiPath(cam.web_ui_path || '/');
     setActiveTab('form');
   };
 
@@ -507,6 +509,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setOsdEnabled(cam.osd_enabled !== 0);
     setArchiveDays(cam.archive_days || 0);
     setArchivePath(cam.archive_path || '');
+    setWebUiPath(cam.web_ui_path || '/');
     setActiveTab('form');
   };
 
@@ -531,6 +534,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setOsdEnabled(true);
     setArchiveDays(0);
     setArchivePath('');
+    setWebUiPath('/');
   };
 
   const handleCreateNew = () => {
@@ -563,6 +567,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       osd_enabled: osdEnabled ? 1 : 0,
       archive_days: parseInt(archiveDays) || 0,
       archive_path: archivePath || null,
+      web_ui_path: webUiPath || '/',
     };
 
     try {
@@ -595,7 +600,13 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   };
 
   const handleOpenProxy = (cam) => {
-    window.open(`/api/proxy/${cam.id}/`, '_blank');
+    let path = cam.web_ui_path || '/';
+    if (!path.startsWith('/')) path = '/' + path;
+    if (path === '/') {
+        window.open(`/api/proxy/${cam.id}/`, '_blank');
+    } else {
+        window.open(`/api/proxy/${cam.id}${path}`, '_blank');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -1125,6 +1136,20 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   Used for live grid streaming and motion detection analysis. Use <code>mock://camera1_sub</code> for testing.
+                </span>
+              </div>
+
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Web UI Proxy Path (Optional)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={webUiPath} 
+                  onChange={(e) => setWebUiPath(e.target.value)} 
+                  placeholder="e.g. /web/index.html"
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  If your camera uses a custom login path (e.g. <code>/web/index.html</code>), setting it here will bypass double login prompts. Defaults to <code>/</code>.
                 </span>
               </div>
 
