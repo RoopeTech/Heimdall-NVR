@@ -4,9 +4,6 @@ from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
-import threading
-import webbrowser
-import time
 from datetime import datetime
 from typing import Optional
 
@@ -696,40 +693,6 @@ else:
             "message": "NVR Backend Running. Frontend dist directory not found. Please compile frontend first."
         }
 
-def start_server():
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")
-
-def launch_ui():
-    url = "http://127.0.0.1:8000"
-    
-    # Wait for server to boot
-    time.sleep(1.5)
-    
-    webview_launched = False
-    try:
-        import webview
-        print("[NVR] Launching PyWebView Local UI window...")
-        title = database.get_system_setting("app_title") or "Heimdall IP Camera NVR Dashboard"
-        webview.create_window(title, url, width=1280, height=800)
-        webview.start()
-        webview_launched = True
-    except Exception as e:
-        print(f"[NVR] PyWebView failed to launch ({e}). Falling back to browser...")
-        
-    if not webview_launched:
-        webbrowser.open(url)
-
 if __name__ == "__main__":
-    import sys
-    is_headless = "--headless" in sys.argv or os.environ.get("NVR_HEADLESS") == "1"
-    
-    if is_headless:
-        print("[NVR] Running in Headless Mode on main thread.")
-        start_server()
-    else:
-        # Start server in a background thread so webview can run on main thread (required on macOS/Windows/Linux)
-        server_thread = threading.Thread(target=start_server, daemon=True)
-        server_thread.start()
-        
-        # Launch UI (webview or web browser fallback) on the main thread
-        launch_ui()
+    print("[NVR] Starting Heimdall NVR server on http://0.0.0.0:8000")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="warning")

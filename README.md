@@ -7,9 +7,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
 ## 🚀 Key Features
 
 *   **Cyberpunk Glassmorphic Design**: A premium responsive dashboard styled with curated dark cyberpunk colors (`#060913` and `#0b0f19`) and dynamic layouts.
-*   **Dual Mode Execution**:
-    *   **Desktop Mode**: Spawns a native browser-less desktop application window (via `pywebview`). Closing the app automatically kills the server.
-    *   **Headless Mode**: Run on headless servers (via `--headless` or `NVR_HEADLESS=1`) to serve the dashboard over the local network.
+*   **Lightweight Server/Client Architecture**: Runs as a headless Python (FastAPI/uvicorn) backend server. Any browser on your network — PC, phone, or tablet — can connect to the dashboard and view live feeds, recordings, and manage settings.
 *   **Zero-CPU Recording**: Leverages background `ffmpeg` with `-c copy` to record high-resolution camera streams. Instead of transcoding (which exhausts CPU), it copies raw H.264 streams directly into an MP4 container, maintaining native quality with near **0% CPU usage**.
 *   **Flexible NVR Recording Modes**:
     *   **Motion Only**: Records clips only when motion is detected.
@@ -93,14 +91,7 @@ cd RTNVR
 *(All installation and update commands must be run from inside this folder).*
 
 ### 2. Run the Automated Installer
-We provide dedicated installer scripts that check for system dependencies (Node.js, Python, FFmpeg), create a virtual environment, install packages, and compile frontend assets.
-
-#### Windows (PowerShell)
-From the cloned `RTNVR` directory, run:
-```powershell
-.\install.ps1
-```
-*This will also register a double-clickable **Heimdall NVR** shortcut on your Desktop.*
+We provide an automated installer that checks for system dependencies (Node.js, Python 3, FFmpeg), creates a virtual environment, installs packages, and compiles the frontend assets.
 
 #### Linux (Debian/Ubuntu/Fedora/Arch)
 From the cloned `RTNVR` directory, make the script executable and run it:
@@ -108,29 +99,17 @@ From the cloned `RTNVR` directory, make the script executable and run it:
 chmod +x install.sh
 ./install.sh
 ```
-*This will also register the application in your desktop environment's launcher menu.*
 
----
+## 🖥️ Running the Server
 
-## 🖥️ Running the Application
-
-### Desktop Mode
-Start the application from the desktop shortcut, or run:
-*   **Windows**: Double-click `run.bat` or run `.\backend\venv\Scripts\python.exe backend\main.py`
-*   **Linux**: Run `./run.sh`
-
-### Headless Server Mode
-If deploying to a headless Linux box with no monitor or graphical server (X11/Wayland), start the server in headless mode:
+Start the backend server directly:
 ```bash
-# Using environment variable
-export NVR_HEADLESS=1
 backend/venv/bin/python backend/main.py
-
-# OR using CLI flag
-backend/venv/bin/python backend/main.py --headless
 ```
+The dashboard will be accessible from any device on your network at `http://<server-ip>:8000`.
 
-To configure the application to run automatically as a background daemon on boot:
+### Running as a Background Daemon (Recommended)
+To have the NVR start automatically on boot and run in the background:
 1. Copy the provided template Systemd service file:
    ```bash
    sudo cp nvr-headless.service /etc/systemd/system/Heimdall-nvr.service
