@@ -538,12 +538,106 @@ def login(data: dict, response: Response):
     }
 
 @app.post("/api/auth/logout")
-def logout(response: Response, current_user: dict = Depends(get_current_user)):
-    token = current_user.get("token")
+def logout(token: str = Cookie(None)):
     if token:
-        database.delete_session(token)
-    response.delete_cookie(key="session_token")
-    return {"success": True}
+        database.conn = database.get_db_connection()
+        database.conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        database.conn.commit()
+        database.conn.close()
+    return {"status": "ok"}
+
+@app.get("/api/auth/sso/config")
+def sso_config():
+    settings = database.get_system_settings()
+    return {
+        "sso_enabled": settings.get("sso_enabled") == "1"
+    }
+
+@app.get("/api/auth/sso/login")
+def sso_login(request: Request):
+    settings = database.get_system_settings()
+    if settings.get("sso_enabled") != "1":
+        raise HTTPException(status_code=400, detail="SSO is not enabled")
+    
+    auth_url = settings.get("sso_auth_url", "")
+    client_id = settings.get("sso_client_id", "")
+    
+    host = request.headers.get("host", "localhost:8000")
+    scheme = request.headers.get("x-forwarded-proto", "http")
+    redirect_uri = f"{scheme}://{host}/api/auth/sso/callback"
+    
+    import urllib.parse
+    import secrets
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": secrets.token_urlsafe(16)
+    }
+    qs = urllib.parse.urlencode(params)
+    target = f"{auth_url}?{qs}"
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(target)
+
+@app.get("/api/auth/sso/callback")
+async def sso_callback(request: Request, code: str):
+    settings = database.get_system_settings()
+    if settings.get("sso_enabled") != "1":
+        raise HTTPException(status_code=400, detail="SSO is not enabled")
+        
+    client_id = settings.get("sso_client_id", "")
+    client_secret = settings.get("sso_client_secret", "")
+    token_url = settings.get("sso_token_url", "")
+    profile_url = settings.get("sso_profile_url", "")
+    
+    host = request.headers.get("host", "localhost:8000")
+    scheme = request.headers.get("x-forwarded-proto", "http")
+    redirect_uri = f"{scheme}://{host}/api/auth/sso/callback"
+    
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(token_url, data={
+            "grant_type": "authorization_code",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code": code,
+            "redirect_uri": redirect_uri
+        })
+        if token_res.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch token: {token_res.text}")
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        
+        profile_res = await client.get(profile_url, headers={
+            "Authorization": f"Bearer {access_token}"
+        })
+        if profile_res.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to fetch profile: {profile_res.text}")
+        profile = profile_res.json()
+        
+    email = profile.get("email") or profile.get("upn")
+    external_id = profile.get("sub") or profile.get("id") or email
+    
+    if not external_id or not email:
+        raise HTTPException(status_code=400, detail="SSO provider did not return an email or unique ID")
+        
+    user = database.get_user_by_external_id(str(external_id))
+    if not user:
+        user = database.get_user_by_username(email)
+        if not user:
+            database.create_sso_user(email, str(external_id), role='viewer')
+            user = database.get_user_by_username(email)
+    
+    import secrets
+    from datetime import timedelta
+    session_token = secrets.token_hex(32)
+    expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat()
+    database.create_session(user["id"], session_token, expires_at)
+    
+    from fastapi.responses import RedirectResponse
+    response = RedirectResponse(url=f"/?token={session_token}")
+    response.set_cookie(key="session_token", value=session_token, httponly=False, max_age=30*24*3600)
+    return response
 
 @app.get("/api/auth/me")
 def get_me(current_user: dict = Depends(get_current_user)):

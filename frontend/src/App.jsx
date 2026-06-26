@@ -109,7 +109,14 @@ export default function App() {
   // Verify token session on startup
   useEffect(() => {
     const initSession = async () => {
-      const storedToken = localStorage.getItem('session_token');
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      if (urlToken) {
+        localStorage.setItem('session_token', urlToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      const storedToken = urlToken || localStorage.getItem('session_token');
       if (storedToken) {
         try {
           const res = await fetch('/api/auth/me', {

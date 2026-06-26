@@ -6,6 +6,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [appTitleInput, setAppTitleInput] = useState('');
   const [retentionDaysInput, setRetentionDaysInput] = useState('0');
 
+  // SSO Settings State
+  const [ssoEnabled, setSsoEnabled] = useState('0');
+  const [ssoClientId, setSsoClientId] = useState('');
+  const [ssoClientSecret, setSsoClientSecret] = useState('');
+  const [ssoAuthUrl, setSsoAuthUrl] = useState('');
+  const [ssoTokenUrl, setSsoTokenUrl] = useState('');
+  const [ssoProfileUrl, setSsoProfileUrl] = useState('');
+
   // Bulk Edit State
   const [selectedCameras, setSelectedCameras] = useState([]);
   const [bulkFields, setBulkFields] = useState({
@@ -321,6 +329,12 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           const data = await res.json();
           setAppTitleInput(data.app_title || '');
           setRetentionDaysInput(data.retention_days || '0');
+          setSsoEnabled(data.sso_enabled || '0');
+          setSsoClientId(data.sso_client_id || '');
+          setSsoClientSecret(data.sso_client_secret || '');
+          setSsoAuthUrl(data.sso_auth_url || '');
+          setSsoTokenUrl(data.sso_token_url || '');
+          setSsoProfileUrl(data.sso_profile_url || '');
         }
       } catch (e) {
         console.error('Error fetching settings inside Settings.jsx:', e);
@@ -427,6 +441,38 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       }
     } catch (err) {
       setError('Network error saving system settings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveSsoSettings = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          sso_enabled: ssoEnabled,
+          sso_client_id: ssoClientId,
+          sso_client_secret: ssoClientSecret,
+          sso_auth_url: ssoAuthUrl,
+          sso_token_url: ssoTokenUrl,
+          sso_profile_url: ssoProfileUrl
+        }),
+      });
+      if (res.ok) {
+        setSuccess('SSO settings updated successfully!');
+      } else {
+        setError('Failed to update SSO settings.');
+      }
+    } catch (err) {
+      setError('Network error saving SSO settings.');
     } finally {
       setLoading(false);
     }
@@ -796,6 +842,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             }}
           >
             🎯 Camera Groups
+          </button>
+        )}
+        {currentUser?.role === 'admin' && (
+          <button 
+            className={`settings-nav-btn ${activeTab === 'sso' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sso')}
+          >
+            🔐 SSO
           </button>
         )}
         {activeTab === 'form' && editingCamera && (
@@ -1356,6 +1410,54 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 ))
               )}
             </div>
+          </div>
+        ) : activeTab === 'sso' && currentUser?.role === 'admin' ? (
+          <div className="fade-in">
+            <h2 style={{ marginBottom: '24px', fontSize: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+              Single Sign-On (OIDC) Configuration
+            </h2>
+            <form onSubmit={handleSaveSsoSettings}>
+              <div className="form-group">
+                <label className="form-label">Enable SSO</label>
+                <select className="form-input" value={ssoEnabled} onChange={e => setSsoEnabled(e.target.value)}>
+                  <option value="0">Disabled</option>
+                  <option value="1">Enabled</option>
+                </select>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>Enables SSO login on the login screen.</div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Client ID</label>
+                <input type="text" className="form-input" value={ssoClientId} onChange={e => setSsoClientId(e.target.value)} placeholder="e.g. client_12345" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Client Secret</label>
+                <input type="password" className="form-input" value={ssoClientSecret} onChange={e => setSsoClientSecret(e.target.value)} placeholder="e.g. secret_12345" />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Authorization URL</label>
+                <input type="url" className="form-input" value={ssoAuthUrl} onChange={e => setSsoAuthUrl(e.target.value)} placeholder="e.g. https://auth.ssoready.com/v1/saml/authorize" />
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>The URL where users are redirected to log in.</div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Token URL</label>
+                <input type="url" className="form-input" value={ssoTokenUrl} onChange={e => setSsoTokenUrl(e.target.value)} placeholder="e.g. https://auth.ssoready.com/v1/oauth2/token" />
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>The URL used to exchange the authorization code for an access token.</div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">User Info / Profile URL</label>
+                <input type="url" className="form-input" value={ssoProfileUrl} onChange={e => setSsoProfileUrl(e.target.value)} placeholder="e.g. https://auth.ssoready.com/v1/oauth2/userinfo" />
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>The URL used to fetch the user's profile information (requires 'email' or 'sub'/'id').</div>
+              </div>
+
+              <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: '12px' }}>
+                {loading ? 'Saving...' : '💾 Save SSO Settings'}
+              </button>
+            </form>
           </div>
         ) : (
           <form onSubmit={handleSave}>

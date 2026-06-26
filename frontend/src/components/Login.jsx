@@ -5,6 +5,16 @@ export default function Login({ appTitle, onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/auth/sso/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.sso_enabled) setSsoEnabled(true);
+      })
+      .catch(err => console.error("Error fetching SSO config:", err));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -74,6 +84,21 @@ export default function Login({ appTitle, onLoginSuccess }) {
             marginBottom: '20px',
           }}>
             ⚠️ {error}
+          </div>
+        )}
+
+        {ssoEnabled && (
+          <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+            <a 
+              href="/api/auth/sso/login"
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+            >
+              🔐 Login with Single Sign-On
+            </a>
+            <div style={{ margin: '20px 0', color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              — or —
+            </div>
           </div>
         )}
 

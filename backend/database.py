@@ -175,9 +175,26 @@ def init_db():
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'viewer'
+        role TEXT NOT NULL DEFAULT 'viewer',
+        auth_provider TEXT DEFAULT 'local',
+        external_id TEXT
     )
     """)
+    
+    # Migration: add auth_provider to existing databases
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
+    # Migration: add external_id to existing databases
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN external_id TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     
     # Create sessions table
     cursor.execute("""
@@ -232,6 +249,22 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO system_settings (key, value) VALUES ('retention_days', '0')")
         conn.commit()
+        
+    # SSO Default Settings
+    sso_defaults = [
+        ('sso_enabled', '0'),
+        ('sso_client_id', ''),
+        ('sso_client_secret', ''),
+        ('sso_auth_url', ''),
+        ('sso_token_url', ''),
+        ('sso_profile_url', '')
+    ]
+    for k, v in sso_defaults:
+        cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = ?", (k,))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO system_settings (key, value) VALUES (?, ?)", (k, v))
+            conn.commit()
+    
     
     # Insert default mock camera if database is brand new
     cursor.execute("SELECT COUNT(*) FROM cameras")
@@ -652,9 +685,34 @@ def create_user(username, password, role='viewer'):
         conn.close()
     return user_id
 
+def create_sso_user(username, external_id, role='viewer'):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # Provide dummy password for NOT NULL constraint since SSO handles auth
+    random_pw = secrets.token_hex(32)
+    pwd_hash, salt = hash_password(random_pw)
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, salt, role, auth_provider, external_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (username, pwd_hash, salt, role, 'sso', external_id)
+        )
+        user_id = cursor.lastrowid
+        conn.commit()
+    except sqlite3.IntegrityError:
+        user_id = None
+    finally:
+        conn.close()
+    return user_id
+
 def get_user_by_username(username):
     conn = get_db_connection()
     row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_user_by_external_id(external_id):
+    conn = get_db_connection()
+    row = conn.execute("SELECT * FROM users WHERE external_id = ?", (external_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
 
