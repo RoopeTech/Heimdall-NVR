@@ -490,14 +490,16 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
           </div>
 
-           <Timeline 
-            recordings={dayRecordings}
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            onPlayRecording={handlePlayRecording}
-            currentPlaybackTime={playbackMode ? currentPlaybackTime : new Date()}
-            events={cameraEvents}
-          />
+          {!theatreMode && (
+            <Timeline 
+              recordings={dayRecordings}
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              onPlayRecording={handlePlayRecording}
+              currentPlaybackTime={playbackMode ? currentPlaybackTime : new Date()}
+              events={cameraEvents}
+            />
+          )}
         </div>
 
         {/* Right Side: PTZ Controls, Event Log, Mock Switch */}
