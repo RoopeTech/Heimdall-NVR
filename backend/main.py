@@ -59,13 +59,17 @@ app.add_middleware(
 # Startup event
 @app.on_event("startup")
 async def startup_event():
+    global proxy_client
+    proxy_client = httpx.AsyncClient(verify=False)
     database.init_db()
     camera_manager.manager.start_all()
 
 # Shutdown event
 @app.on_event("shutdown")
-def shutdown_event():
+async def shutdown_event():
     camera_manager.manager.stop_all()
+    if proxy_client:
+        await proxy_client.aclose()
 
 # Live Video Stream (MJPEG)
 @app.get("/api/cameras/{camera_id}/live")
@@ -535,7 +539,7 @@ def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
     return {"success": True}
 
 # HTTP Proxy Implementation
-proxy_client = httpx.AsyncClient(verify=False)
+proxy_client = None
 
 @app.middleware("http")
 async def proxy_middleware(request: Request, call_next):
