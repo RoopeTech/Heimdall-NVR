@@ -20,6 +20,16 @@ def verify_password(password: str, salt: str, password_hash: str) -> bool:
     h, _ = hash_password(password, salt)
     return h == password_hash
 
+def get_cipher(secret: str) -> Fernet:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b'static_salt',
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(secret.encode()))
+    return Fernet(key)
+
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nvr.db")
 
 def get_db_connection():
@@ -442,24 +452,66 @@ def delete_recording(recording_id):
     conn.close()
     return True
 
-def export_config():
+def get_cipher(password: str, salt: bytes):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    return Fernet(key)
+
+def export_config(encryption_password=None):
     conn = get_db_connection()
     cameras = [dict(row) for row in conn.execute("SELECT * FROM cameras").fetchall()]
     settings = [dict(row) for row in conn.execute("SELECT * FROM system_settings").fetchall()]
     users = [dict(row) for row in conn.execute("SELECT * FROM users").fetchall()]
     conn.close()
+    
+    is_encrypted = False
+    salt_b64 = None
+    
+    if encryption_password:
+        salt = os.urandom(16)
+        salt_b64 = base64.b64encode(salt).decode('utf-8')
+        f = get_cipher(encryption_password, salt)
+        
+        for cam in cameras:
+            if cam.get('rtsp_pass'):
+                cam['rtsp_pass'] = f.encrypt(cam['rtsp_pass'].encode('utf-8')).decode('utf-8')
+            if cam.get('ptz_pass'):
+                cam['ptz_pass'] = f.encrypt(cam['ptz_pass'].encode('utf-8')).decode('utf-8')
+        is_encrypted = True
+
     return {
         "cameras": cameras,
         "system_settings": settings,
-        "users": users
+        "users": users,
+        "is_encrypted": is_encrypted,
+        "salt": salt_b64
     }
 
-def import_config(config_data):
+def import_config(config_data, decryption_password=None):
     if not isinstance(config_data, dict):
         return False, "Invalid backup file format"
     if "cameras" not in config_data or "system_settings" not in config_data:
         return False, "Backup file missing required configuration tables"
         
+    if config_data.get("is_encrypted"):
+        if not decryption_password:
+            return False, "Backup is encrypted but no password was provided"
+        try:
+            salt = base64.b64decode(config_data["salt"])
+            f = get_cipher(decryption_password, salt)
+            for cam in config_data["cameras"]:
+                if cam.get('rtsp_pass'):
+                    cam['rtsp_pass'] = f.decrypt(cam['rtsp_pass'].encode('utf-8')).decode('utf-8')
+                if cam.get('ptz_pass'):
+                    cam['ptz_pass'] = f.decrypt(cam['ptz_pass'].encode('utf-8')).decode('utf-8')
+        except Exception:
+            return False, "Failed to decrypt backup (incorrect password or corrupted file)"
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:

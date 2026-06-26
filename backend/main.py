@@ -361,13 +361,21 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         database.set_system_setting("retention_days", str(data["retention_days"]))
     return {"success": True}
 
-@app.get("/api/settings/backup")
-def backup_settings(admin: dict = Depends(require_admin)):
-    return database.export_config()
+from pydantic import BaseModel
+class BackupRequest(BaseModel):
+    password: str = None
+
+@app.post("/api/settings/backup")
+def backup_settings(req: BackupRequest, admin: dict = Depends(require_admin)):
+    return database.export_config(encryption_password=req.password)
+
+class RestoreRequest(BaseModel):
+    data: dict
+    password: str = None
 
 @app.post("/api/settings/restore")
-def restore_settings(data: dict, admin: dict = Depends(require_admin)):
-    success, message = database.import_config(data)
+def restore_settings(req: RestoreRequest, admin: dict = Depends(require_admin)):
+    success, message = database.import_config(req.data, decryption_password=req.password)
     if not success:
         raise HTTPException(status_code=400, detail=message)
     # Reload camera manager threads to load the imported configuration immediately

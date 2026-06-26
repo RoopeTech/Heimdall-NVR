@@ -343,12 +343,20 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   };
 
   const handleExportConfig = async () => {
+    const password = window.prompt("Enter a password to encrypt your camera passwords (or leave blank to save them unencrypted):");
+    if (password === null) return; // user cancelled
+
     setLoading(true);
     setError('');
     setSuccess('');
     try {
       const res = await fetch('/api/settings/backup', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: password || null })
       });
       if (res.ok) {
         const data = await res.json();
@@ -389,13 +397,27 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     reader.onload = async (event) => {
       try {
         const payload = JSON.parse(event.target.result);
+        
+        let password = null;
+        if (payload.is_encrypted) {
+          password = window.prompt("This backup is encrypted. Please enter the password:");
+          if (password === null) {
+            e.target.value = '';
+            setLoading(false);
+            return;
+          }
+        }
+
         const res = await fetch('/api/settings/restore', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({
+            data: payload,
+            password: password
+          })
         });
         
         if (res.ok) {
