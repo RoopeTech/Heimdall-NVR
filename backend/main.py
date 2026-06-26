@@ -555,7 +555,8 @@ async def proxy_middleware(request: Request, call_next):
             if camera:
                 parsed = urlparse(camera["main_url"])
                 target_host = parsed.hostname
-                target_port = parsed.port or 80
+                target_port = 80 if parsed.scheme == "rtsp" else (parsed.port or 80)
+                target_scheme = "http"
                 
                 target_url = f"http://{target_host}:{target_port}{request.url.path}"
                 if request.url.query:
@@ -599,7 +600,8 @@ async def camera_proxy(camera_id: int, path: str, request: Request, current_user
         
     parsed = urlparse(camera["main_url"])
     target_host = parsed.hostname
-    target_port = parsed.port or 80
+    target_port = 80 if parsed.scheme == "rtsp" else (parsed.port or 80)
+    target_scheme = "http"
     
     target_url = f"http://{target_host}:{target_port}/{path}"
     if request.url.query:
