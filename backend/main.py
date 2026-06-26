@@ -12,8 +12,9 @@ from typing import Optional
 
 import database
 import camera_manager
-import tcp_proxy
-import asyncio
+import httpx
+import re
+from urllib.parse import urlparse
 
 # Authentication Dependencies
 def get_current_user(
@@ -60,7 +61,6 @@ app.add_middleware(
 async def startup_event():
     database.init_db()
     camera_manager.manager.start_all()
-    asyncio.create_task(tcp_proxy.proxy_manager.cleanup_loop())
 
 # Shutdown event
 @app.on_event("shutdown")
@@ -534,23 +534,79 @@ def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True}
 
-# Proxy Endpoints
-@app.post("/api/cameras/{camera_id}/proxy/start")
-async def start_camera_proxy(camera_id: int, current_user: dict = Depends(get_current_user)):
+# HTTP Proxy Implementation
+proxy_client = httpx.AsyncClient(verify=False)
+
+@app.middleware("http")
+async def proxy_middleware(request: Request, call_next):
+    if request.url.path.startswith("/api/proxy/"):
+        return await call_next(request)
+        
+    referer = request.headers.get("referer")
+    if referer and "/api/proxy/" in referer:
+        match = re.search(r'/api/proxy/(\d+)', referer)
+        if match:
+            camera_id = int(match.group(1))
+            camera = database.get_camera(camera_id)
+            if camera:
+                parsed = urlparse(camera["main_url"])
+                target_host = parsed.hostname
+                target_port = parsed.port or 80
+                
+                target_url = f"http://{target_host}:{target_port}{request.url.path}"
+                if request.url.query:
+                    target_url += f"?{request.url.query}"
+                    
+                headers = dict(request.headers)
+                headers.pop("host", None)
+                headers.pop("referer", None)
+                
+                req = proxy_client.build_request(
+                    request.method,
+                    target_url,
+                    headers=headers,
+                    content=await request.body()
+                )
+                
+                resp = await proxy_client.send(req, stream=True)
+                return StreamingResponse(
+                    resp.aiter_raw(),
+                    status_code=resp.status_code,
+                    headers=resp.headers
+                )
+                
+    return await call_next(request)
+
+@app.api_route("/api/proxy/{camera_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def camera_proxy(camera_id: int, path: str, request: Request, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
         
-    try:
-        port = await tcp_proxy.proxy_manager.start_proxy(camera_id, camera["main_url"])
-        return {"proxy_port": port}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/cameras/{camera_id}/proxy/stop")
-async def stop_camera_proxy(camera_id: int, current_user: dict = Depends(get_current_user)):
-    await tcp_proxy.proxy_manager.stop_proxy(camera_id)
-    return {"status": "stopped"}
+    parsed = urlparse(camera["main_url"])
+    target_host = parsed.hostname
+    target_port = parsed.port or 80
+    
+    target_url = f"http://{target_host}:{target_port}/{path}"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+        
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    
+    req = proxy_client.build_request(
+        request.method,
+        target_url,
+        headers=headers,
+        content=await request.body()
+    )
+    
+    resp = await proxy_client.send(req, stream=True)
+    return StreamingResponse(
+        resp.aiter_raw(),
+        status_code=resp.status_code,
+        headers=resp.headers
+    )
 
 # Serve Frontend static assets
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")

@@ -594,22 +594,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     }
   };
 
-  const handleOpenProxy = async (cam) => {
-    try {
-      const res = await fetch(`/api/cameras/${cam.id}/proxy/start`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error('Failed to start proxy tunnel');
-      const data = await res.json();
-      
-      const port = data.proxy_port;
-      const proxyUrl = `${window.location.protocol}//${window.location.hostname}:${port}`;
-      window.open(proxyUrl, '_blank');
-      
-    } catch (e) {
-      alert(`Error opening camera settings: ${e.message}`);
-    }
+  const handleOpenProxy = (cam) => {
+    window.open(`/api/proxy/${cam.id}/`, '_blank');
   };
 
   const handleDelete = async (id) => {

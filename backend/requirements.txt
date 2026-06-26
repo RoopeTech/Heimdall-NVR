@@ -3,3 +3,5 @@ uvicorn[standard]>=0.22.0
 opencv-python-headless>=4.8.0.74
 requests>=2.31.0
 pywebview>=4.2.2
+
+httpx>=0.24.0
