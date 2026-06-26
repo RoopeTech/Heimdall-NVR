@@ -268,6 +268,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [osdEnabled, setOsdEnabled] = useState(true);
   const [archiveDays, setArchiveDays] = useState(0);
   const [archivePath, setArchivePath] = useState('');
+  const [streamType, setStreamType] = useState('rtsp');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageRefreshInterval, setImageRefreshInterval] = useState(3600);
 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
@@ -507,6 +510,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setRtspPass(cam.rtsp_pass || '');
     setOsdEnabled(cam.osd_enabled !== 0);
     setWebUiPath(cam.web_ui_path || '/');
+    setStreamType(cam.stream_type || 'rtsp');
+    setImageUrl(cam.image_url || '');
+    setImageRefreshInterval(cam.image_refresh_interval || 3600);
     setActiveTab('form');
   };
 
@@ -532,6 +538,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setArchiveDays(cam.archive_days || 0);
     setArchivePath(cam.archive_path || '');
     setWebUiPath(cam.web_ui_path || '/');
+    setStreamType(cam.stream_type || 'rtsp');
+    setImageUrl(cam.image_url || '');
+    setImageRefreshInterval(cam.image_refresh_interval || 3600);
     setActiveTab('form');
   };
 
@@ -557,6 +566,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     setArchiveDays(0);
     setArchivePath('');
     setWebUiPath('/');
+    setStreamType('rtsp');
+    setImageUrl('');
+    setImageRefreshInterval(3600);
   };
 
   const handleCreateNew = () => {
@@ -590,6 +602,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
       archive_days: parseInt(archiveDays) || 0,
       archive_path: archivePath || null,
       web_ui_path: webUiPath || '/',
+      stream_type: streamType,
+      image_url: streamType === 'image_url' ? imageUrl : null,
+      image_refresh_interval: parseInt(imageRefreshInterval) || 3600,
     };
 
     try {
@@ -1131,35 +1146,81 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Main Stream URL (High Res)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={mainUrl} 
-                  onChange={(e) => setMainUrl(e.target.value)} 
-                  placeholder="rtsp://ip:554/h264"
-                  required
-                />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Used for recording high quality video clips to disk. Use <code>mock://camera1_main</code> for testing.
-                </span>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Source Type</label>
+                <select
+                  className="form-input"
+                  value={streamType}
+                  onChange={(e) => setStreamType(e.target.value)}
+                >
+                  <option value="rtsp">📡 RTSP Stream (IP Camera)</option>
+                  <option value="image_url">🖼️ Image / GIF URL</option>
+                </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Sub-Stream URL (Low Res)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={subUrl} 
-                  onChange={(e) => setSubUrl(e.target.value)} 
-                  placeholder="rtsp://ip:554/h264_sub"
-                  required
-                />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Used for live grid streaming and motion detection analysis. Use <code>mock://camera1_sub</code> for testing.
-                </span>
-              </div>
+              {streamType === 'rtsp' ? (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Main Stream URL (High Res)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={mainUrl}
+                      onChange={(e) => setMainUrl(e.target.value)}
+                      placeholder="rtsp://ip:554/11"
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Used for recording high quality video clips to disk. Use <code>mock://camera1_main</code> for testing.
+                    </span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Sub-Stream URL (Low Res)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={subUrl}
+                      onChange={(e) => setSubUrl(e.target.value)}
+                      placeholder="rtsp://ip:554/12"
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Used for live grid streaming and motion detection. Use <code>mock://camera1_sub</code> for testing.
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Image / GIF URL</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/radar.gif"
+                      required={streamType === 'image_url'}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Enter the direct URL to any publicly accessible JPEG, PNG, or GIF image. The NVR server will fetch it periodically and display it as a live tile.
+                    </span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Refresh Interval (seconds)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={imageRefreshInterval}
+                      onChange={(e) => setImageRefreshInterval(e.target.value)}
+                      min="5"
+                      step="1"
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      How often to re-fetch the image. Common values: <code>3600</code> (1 hr), <code>1800</code> (30 min), <code>300</code> (5 min), <code>30</code> (30 sec).
+                    </span>
+                  </div>
+                </>
+              )}
 
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Web UI Proxy Path (Optional)</label>

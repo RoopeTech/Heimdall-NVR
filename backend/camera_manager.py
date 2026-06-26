@@ -178,6 +178,96 @@ def inject_credentials(url, username, password):
         return f"rtsp://{encoded_user}:{encoded_pass}@{raw_url}"
     return url
 
+class ImageUrlThread(threading.Thread):
+    """
+    Periodically fetches a remote image or GIF URL and serves it as a camera feed.
+    No motion detection, PTZ, or recording — display-only.
+    """
+    def __init__(self, camera_info):
+        super().__init__()
+        self.daemon = True
+        self.camera_id = camera_info['id']
+        self.name = camera_info['name']
+        self.image_url = camera_info.get('image_url', '')
+        self.refresh_interval = camera_info.get('image_refresh_interval', 3600)
+
+        self.running = True
+        self.latest_jpeg_bytes = None
+        self.latest_hq_jpeg_bytes = None
+        self.is_mock = False
+        self.is_motion_detected = False
+        self.is_recording = False
+        self.consecutive_failures = 0
+
+        self._generate_placeholder()
+
+    def _generate_placeholder(self):
+        """Generate a dark 'Fetching Image...' placeholder."""
+        img = np.zeros((360, 640, 3), dtype=np.uint8)
+        img[:] = (18, 22, 38)
+        cv2.putText(img, "Fetching Image...", (160, 190),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (100, 120, 180), 2)
+        _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        self.latest_jpeg_bytes = buf.tobytes()
+        self.latest_hq_jpeg_bytes = buf.tobytes()
+
+    def _fetch_image(self):
+        """Fetch the remote image and decode it with OpenCV."""
+        import urllib.request
+        try:
+            req = urllib.request.Request(self.image_url, headers={'User-Agent': 'HeimdallNVR/1.0'})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read()
+
+            # Decode image bytes via numpy/OpenCV (supports JPEG, PNG, GIF first-frame, etc.)
+            arr = np.frombuffer(raw, dtype=np.uint8)
+            frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if frame is None:
+                raise ValueError("cv2.imdecode returned None — unsupported format?")
+
+            # HQ version (full resolution)
+            _, hq_buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            self.latest_hq_jpeg_bytes = hq_buf.tobytes()
+
+            # Thumbnail version (640px wide for grid)
+            h, w = frame.shape[:2]
+            if w > 640:
+                scale = 640 / w
+                thumb = cv2.resize(frame, (640, int(h * scale)), interpolation=cv2.INTER_AREA)
+            else:
+                thumb = frame
+            _, thumb_buf = cv2.imencode('.jpg', thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            self.latest_jpeg_bytes = thumb_buf.tobytes()
+            self.consecutive_failures = 0
+            print(f"[ImageURL] [{self.name}] Fetched OK ({len(raw)} bytes)")
+
+        except Exception as e:
+            self.consecutive_failures += 1
+            print(f"[ImageURL] [{self.name}] Fetch failed ({e}), attempt #{self.consecutive_failures}")
+            # Show error placeholder
+            img = np.zeros((360, 640, 3), dtype=np.uint8)
+            img[:] = (18, 22, 38)
+            cv2.putText(img, "Image Unavailable", (155, 170),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (60, 60, 200), 2)
+            cv2.putText(img, str(e)[:55], (40, 210),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (100, 100, 140), 1)
+            _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            self.latest_jpeg_bytes = buf.tobytes()
+            self.latest_hq_jpeg_bytes = buf.tobytes()
+
+    def stop(self):
+        self.running = False
+
+    def run(self):
+        print(f"[ImageURL] [{self.name}] Starting — URL: {self.image_url} | Interval: {self.refresh_interval}s")
+        while self.running:
+            self._fetch_image()
+            # Sleep in small chunks so stop() responds quickly
+            for _ in range(self.refresh_interval * 10):
+                if not self.running:
+                    break
+                time.sleep(0.1)
+
 class CameraThread(threading.Thread):
     def __init__(self, camera_info):
         super().__init__()
@@ -692,8 +782,12 @@ class CameraManager:
         camera_id = camera_info['id']
         if camera_id in self.threads:
             self.stop_camera(camera_id)
-            
-        thread = CameraThread(camera_info)
+
+        stream_type = camera_info.get('stream_type', 'rtsp')
+        if stream_type == 'image_url':
+            thread = ImageUrlThread(camera_info)
+        else:
+            thread = CameraThread(camera_info)
         self.threads[camera_id] = thread
         thread.start()
         

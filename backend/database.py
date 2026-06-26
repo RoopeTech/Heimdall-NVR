@@ -108,6 +108,24 @@ def init_db():
         conn.commit()
     except sqlite3.OperationalError:
         pass # Column already exists
+
+    # Migration: add stream_type and image_url and image_refresh_interval to existing databases
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN stream_type TEXT DEFAULT 'rtsp'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN image_url TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    try:
+        cursor.execute("ALTER TABLE cameras ADD COLUMN image_refresh_interval INTEGER DEFAULT 3600")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass # Column already exists
+
     
     # Create recordings table
     cursor.execute("""
@@ -306,10 +324,10 @@ def add_camera(camera_data):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass, osd_enabled, web_ui_path)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO cameras (name, main_url, sub_url, ptz_ip, ptz_port, ptz_user, ptz_pass, ptz_type, motion_enabled, motion_sensitivity, motion_threshold, pre_roll, post_roll, record_mode, rtsp_user, rtsp_pass, osd_enabled, web_ui_path, stream_type, image_url, image_refresh_interval)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
+        camera_data['name'], camera_data.get('main_url', ''), camera_data.get('sub_url', ''),
         camera_data.get('ptz_ip'), camera_data.get('ptz_port'), camera_data.get('ptz_user'), camera_data.get('ptz_pass'),
         camera_data.get('ptz_type', 'onvif'),
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
@@ -317,7 +335,10 @@ def add_camera(camera_data):
         camera_data.get('record_mode', 'motion'),
         camera_data.get('rtsp_user'), camera_data.get('rtsp_pass'),
         camera_data.get('osd_enabled', 1),
-        camera_data.get('web_ui_path', '/')
+        camera_data.get('web_ui_path', '/'),
+        camera_data.get('stream_type', 'rtsp'),
+        camera_data.get('image_url'),
+        camera_data.get('image_refresh_interval', 3600)
     ))
     camera_id = cursor.lastrowid
     conn.commit()
@@ -330,10 +351,11 @@ def update_camera(camera_id, camera_data):
     cursor.execute("""
     UPDATE cameras
     SET name=?, main_url=?, sub_url=?, ptz_ip=?, ptz_port=?, ptz_user=?, ptz_pass=?, ptz_type=?,
-        motion_enabled=?, motion_sensitivity=?, motion_threshold=?, pre_roll=?, post_roll=?, record_mode=?, rtsp_user=?, rtsp_pass=?, osd_enabled=?, web_ui_path=?
+        motion_enabled=?, motion_sensitivity=?, motion_threshold=?, pre_roll=?, post_roll=?, record_mode=?, rtsp_user=?, rtsp_pass=?, osd_enabled=?, web_ui_path=?,
+        stream_type=?, image_url=?, image_refresh_interval=?
     WHERE id=?
     """, (
-        camera_data['name'], camera_data['main_url'], camera_data['sub_url'],
+        camera_data['name'], camera_data.get('main_url', ''), camera_data.get('sub_url', ''),
         camera_data.get('ptz_ip'), camera_data.get('ptz_port'), camera_data.get('ptz_user'), camera_data.get('ptz_pass'),
         camera_data.get('ptz_type', 'onvif'),
         camera_data.get('motion_enabled', 1), camera_data.get('motion_sensitivity', 50),
@@ -342,6 +364,9 @@ def update_camera(camera_id, camera_data):
         camera_data.get('rtsp_user'), camera_data.get('rtsp_pass'),
         camera_data.get('osd_enabled', 1),
         camera_data.get('web_ui_path', '/'),
+        camera_data.get('stream_type', 'rtsp'),
+        camera_data.get('image_url'),
+        camera_data.get('image_refresh_interval', 3600),
         camera_id
     ))
     conn.commit()
