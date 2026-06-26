@@ -541,22 +541,31 @@ def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
 # HTTP Proxy Implementation
 proxy_client = None
 
+user_proxy_sessions = {}
+
 @app.middleware("http")
 async def proxy_middleware(request: Request, call_next):
     if request.url.path.startswith("/api/proxy/"):
-        return await call_next(request)
-        
-    referer = request.headers.get("referer")
-    if referer and "/api/proxy/" in referer:
-        match = re.search(r'/api/proxy/(\d+)', referer)
+        match = re.search(r'/api/proxy/(\d+)', request.url.path)
         if match:
             camera_id = int(match.group(1))
+            session = request.cookies.get("session_token")
+            if session:
+                user_proxy_sessions[session] = camera_id
+                
+        return await call_next(request)
+        
+    response = await call_next(request)
+    
+    if response.status_code == 404:
+        session = request.cookies.get("session_token")
+        if session and session in user_proxy_sessions:
+            camera_id = user_proxy_sessions[session]
             camera = database.get_camera(camera_id)
             if camera:
                 parsed = urlparse(camera["main_url"])
                 target_host = parsed.hostname
                 target_port = 80 if parsed.scheme == "rtsp" else (parsed.port or 80)
-                target_scheme = "http"
                 
                 target_url = f"http://{target_host}:{target_port}{request.url.path}"
                 if request.url.query:
@@ -566,9 +575,17 @@ async def proxy_middleware(request: Request, call_next):
                 headers.pop("host", None)
                 headers.pop("referer", None)
                 
-                body = await request.body()
+                body = None
+                if request.method in ["POST", "PUT", "PATCH"]:
+                    try:
+                        async for chunk in request.stream():
+                            if body is None:
+                                body = b""
+                            body += chunk
+                    except:
+                        pass
+                        
                 if not body:
-                    body = None
                     headers.pop("content-length", None)
                 
                 try:
@@ -590,7 +607,7 @@ async def proxy_middleware(request: Request, call_next):
                     print(f"[Proxy Middleware] Error: {e}")
                     return Response(content=f"Proxy Error: {str(e)}\n\n{traceback.format_exc()}", status_code=502)
                 
-    return await call_next(request)
+    return response
 
 @app.api_route("/api/proxy/{camera_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def camera_proxy_base(camera_id: int, request: Request, current_user: dict = Depends(get_current_user)):
