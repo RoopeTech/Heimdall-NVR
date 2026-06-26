@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function EventLog({ events, onEventClick }) {
+export default function EventLog({ events, onEventClick, token }) {
   const formatTime = (isoStr) => {
     try {
       const date = new Date(isoStr);
@@ -30,21 +30,40 @@ export default function EventLog({ events, onEventClick }) {
 
       <div className="event-log-list">
         {events.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', gridColumn: '1 / -1' }}>
             No recent events logged.
           </div>
         ) : (
           events.map((evt) => {
             const isMotion = evt.event_type.startsWith('MOTION');
+            const hasThumbnail = !!evt.camera_id;
+            
             return (
               <div 
                 key={evt.id} 
                 className="event-item"
                 onClick={() => onEventClick(evt)}
               >
-                <div className={`event-icon ${isMotion ? 'motion' : 'system'}`}>
-                  {isMotion ? '🏃' : '⚙️'}
-                </div>
+                {hasThumbnail ? (
+                  <div className="event-thumbnail">
+                    <img 
+                      src={`/api/cameras/${evt.camera_id}/snapshot?token=${token}`} 
+                      alt="Event Thumbnail"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                      loading="lazy"
+                    />
+                    <div className="event-thumbnail-overlay">
+                       <div className={`event-icon ${isMotion ? 'motion' : 'system'}`}>
+                         {isMotion ? '🏃' : '⚙️'}
+                       </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`event-icon ${isMotion ? 'motion' : 'system'}`}>
+                    {isMotion ? '🏃' : '⚙️'}
+                  </div>
+                )}
+                
                 <div className="event-details">
                   <div className="event-title">{evt.details}</div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

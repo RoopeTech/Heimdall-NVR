@@ -430,6 +430,7 @@ export default function App() {
               <EventLog 
                 events={events} 
                 onEventClick={handleEventClick}
+                token={token}
               />
             </div>
           </div>
