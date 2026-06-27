@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CameraGrid from './components/CameraGrid';
 import CameraDetail from './components/CameraDetail';
-import EventLog from './components/EventLog';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import RecordingsArchive from './components/RecordingsArchive';
@@ -10,7 +9,6 @@ import './App.css';
 export default function App() {
   const [cameras, setCameras] = useState([]);
   const [recordings, setRecordings] = useState([]);
-  const [events, setEvents] = useState([]);
   const [activeTab, setActiveTab] = useState('grid');
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [appTitle, setAppTitle] = useState('Heimdall NVR');
@@ -78,19 +76,6 @@ export default function App() {
     }
   };
 
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch('/api/events?limit=40', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data);
-      }
-    } catch (e) {
-      console.error('Error fetching events:', e);
-    }
-  };
 
   const checkUpdateStatus = async () => {
     if (!token) return;
@@ -145,12 +130,10 @@ export default function App() {
     fetchSettings();
     fetchCameras();
     fetchRecordings();
-    fetchEvents();
     checkUpdateStatus();
 
     const interval = setInterval(() => {
       fetchRecordings();
-      fetchEvents();
     }, 4000);
 
     return () => clearInterval(interval);
@@ -346,17 +329,12 @@ export default function App() {
           >
             📺 Live Stream Grid
           </button>
-          <button 
-            className={`nav-tab ${activeTab === 'events' ? 'active' : ''}`}
-            onClick={() => setActiveTab('events')}
-          >
-            🔔 Activity Logs
-          </button>
+
           <button 
             className={`nav-tab ${activeTab === 'recordings' ? 'active' : ''}`} 
             onClick={() => setActiveTab('recordings')}
           >
-            <span className="tab-icon">📼</span> Recordings
+            <span className="tab-icon">📼</span> Archive & Logs
           </button>
           {user.role === 'admin' && (
             <button 
@@ -439,22 +417,13 @@ export default function App() {
         )}
 
 
-        {activeTab === 'events' && (
-          <div className="view-container">
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-              <EventLog 
-                events={events} 
-                onEventClick={handleEventClick}
-                token={token}
-              />
-            </div>
-          </div>
-        )}
+
 
         {activeTab === 'recordings' && (
           <RecordingsArchive 
             cameras={cameras} 
             token={token}
+            onEventClick={handleEventClick}
           />
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function RecordingsArchive({ cameras, token }) {
+export default function RecordingsArchive({ cameras, token, onEventClick }) {
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(false);
   const d = new Date();
@@ -9,6 +9,8 @@ export default function RecordingsArchive({ cameras, token }) {
   const [selectedCameraId, setSelectedCameraId] = useState('all');
   const [playingRecording, setPlayingRecording] = useState(null);
   const [storageStats, setStorageStats] = useState(null);
+  const [viewMode, setViewMode] = useState('recordings');
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
     fetchArchive();
@@ -33,23 +35,30 @@ export default function RecordingsArchive({ cameras, token }) {
     if (!token) return;
     setLoading(true);
     try {
-      let url = `/api/recordings?date=${selectedDate}`;
+      let recUrl = `/api/recordings?date=${selectedDate}`;
+      let evUrl = `/api/events?date=${selectedDate}&limit=500`;
       if (selectedCameraId !== 'all') {
-        url += `&camera_id=${selectedCameraId}`;
+        recUrl += `&camera_id=${selectedCameraId}`;
+        evUrl += `&camera_id=${selectedCameraId}`;
       }
       
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setRecordings(data);
-      } else {
-        setRecordings([]);
+      const [recRes, evRes] = await Promise.all([
+        fetch(recUrl, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(evUrl, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      
+      if (recRes.ok) {
+        const recData = await recRes.json();
+        setRecordings(Array.isArray(recData) ? recData : []);
+      }
+      if (evRes.ok) {
+        const evData = await evRes.json();
+        setEvents(Array.isArray(evData) ? evData : []);
       }
     } catch (err) {
-      console.error('Error fetching recordings archive:', err);
+      console.error('Error fetching archive data:', err);
       setRecordings([]);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -63,7 +72,10 @@ export default function RecordingsArchive({ cameras, token }) {
       return isoStr;
     }
   };
-  
+  const formatEventDate = (isoStr) => {
+    try { return new Date(isoStr).toLocaleDateString(); } catch (e) { return ''; }
+  };
+
   const formatDuration = (seconds) => {
     if (!seconds) return 'Ongoing';
     if (seconds < 60) return `${Math.floor(seconds)}s`;
@@ -130,7 +142,7 @@ export default function RecordingsArchive({ cameras, token }) {
 
         <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📼 Recordings Archive</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>📼 Archive & Logs</h2>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '12px' }}>Date</label>
@@ -154,6 +166,18 @@ export default function RecordingsArchive({ cameras, token }) {
                   {cameras.map(cam => (
                     <option key={cam.id} value={cam.id}>{cam.name}</option>
                   ))}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '12px' }}>View Type</label>
+                <select 
+                  className="form-input"
+                  style={{ width: 'auto', minWidth: '150px' }}
+                  value={viewMode}
+                  onChange={(e) => setViewMode(e.target.value)}
+                >
+                  <option value="recordings">Video Recordings</option>
+                  <option value="events">Activity Logs</option>
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -192,11 +216,60 @@ export default function RecordingsArchive({ cameras, token }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>Results</h3>
             <span className="badge" style={{ background: 'rgba(255,255,255,0.1)' }}>
-              {recordings.length} found
+              {viewMode === 'recordings' ? recordings.length : events.length} found
             </span>
           </div>
 
-          {recordings.length === 0 ? (
+          {viewMode === 'events' ? (
+            <div className="event-log-list">
+              {events.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', gridColumn: '1 / -1' }}>
+                  No recent events logged for this date.
+                </div>
+              ) : (
+                events.map((evt) => {
+                  const isMotion = evt.event_type.startsWith('MOTION');
+                  const hasThumbnail = !!evt.camera_id;
+                  return (
+                    <div 
+                      key={evt.id} 
+                      className="event-item glass-panel fade-in" 
+                      style={{ marginBottom: '10px', cursor: onEventClick ? 'pointer' : 'default' }}
+                      onClick={() => onEventClick && onEventClick(evt)}
+                    >
+                      {hasThumbnail ? (
+                        <div className="event-thumbnail">
+                          <img 
+                            src={`/api/cameras/${evt.camera_id}/snapshot?token=${token}`} 
+                            alt="Event Thumbnail"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                            loading="lazy"
+                          />
+                          <div className="event-thumbnail-overlay">
+                             <div className={`event-icon ${isMotion ? 'motion' : 'system'}`}>
+                               {isMotion ? '🏃' : '⚙️'}
+                             </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`event-icon ${isMotion ? 'motion' : 'system'}`}>
+                          {isMotion ? '🏃' : '⚙️'}
+                        </div>
+                      )}
+                      <div className="event-details">
+                        <div className="event-title">{evt.details}</div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span className="event-time">{formatTime(evt.timestamp)}</span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>•</span>
+                          <span className="event-time">{formatEventDate(evt.timestamp)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : recordings.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
               <p>No recordings found for the selected date and camera.</p>
