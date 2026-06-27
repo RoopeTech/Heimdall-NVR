@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 export default function RecordingsArchive({ cameras, token }) {
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const d = new Date();
+  const localTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [selectedDate, setSelectedDate] = useState(localTodayStr);
   const [selectedCameraId, setSelectedCameraId] = useState('all');
   const [playingRecording, setPlayingRecording] = useState(null);
   const [storageStats, setStorageStats] = useState(null);

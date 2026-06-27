@@ -116,7 +116,9 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const [mockMotionActive, setMockMotionActive] = useState(true);
   const [cameraEvents, setCameraEvents] = useState([]);
   const [dayRecordings, setDayRecordings] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const d = new Date();
+  const localTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [selectedDate, setSelectedDate] = useState(localTodayStr);
   const [theatreMode, setTheatreMode] = useState(false);
   const videoRef = useRef(null);
 

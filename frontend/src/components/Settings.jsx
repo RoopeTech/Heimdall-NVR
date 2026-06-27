@@ -500,7 +500,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `nvr_config_${new Date().toISOString().split('T')[0]}.json`;
+        const d = new Date();
+        const localTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        a.download = `nvr_config_${localTodayStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
