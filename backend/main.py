@@ -487,7 +487,12 @@ def apply_update(admin: dict = Depends(require_admin)):
         # 2. Recompile frontend static bundle in the background
         frontend_dir = os.path.join(project_root, "frontend")
         npm_cmd = "npm.cmd" if os.name == 'nt' else "npm"
-        subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=40)
+        try:
+            subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=40)
+        except FileNotFoundError:
+            print("[Update] npm not found. Skipping frontend build.")
+        except Exception as e:
+            print(f"[Update] Error running npm build: {e}")
         
         # 3. Schedule server process termination in 1.5 seconds.
         # Running under systemd (with Restart=always) or a wrapper daemon will restart it automatically.
