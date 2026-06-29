@@ -17,9 +17,10 @@ function CameraStream({ camera, token, className }) {
   const [refreshKey, setRefreshKey]  = useState(Date.now());
 
   const isImageStream = camera?.stream_type === 'image_url';
+  const isWebsiteStream = camera?.stream_type === 'website';
 
   const fetchFrame = useCallback(async () => {
-    if (isImageStream) return;
+    if (isImageStream || isWebsiteStream) return;
     try {
       const res = await fetch(`/api/cameras/${camera?.id}/snapshot`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -49,6 +50,8 @@ function CameraStream({ camera, token, className }) {
       intervalRef.current = setInterval(() => {
         setRefreshKey(Date.now());
       }, interval);
+    } else if (isWebsiteStream) {
+      setStatus('live');
     } else {
       setStatus('loading');
       setBlobUrl(null);
@@ -76,7 +79,14 @@ function CameraStream({ camera, token, className }) {
 
   return (
     <>
-      {isImageStream ? (
+      {isWebsiteStream ? (
+        <iframe
+          src={camera.main_url}
+          className={className}
+          style={{ border: 'none', pointerEvents: 'none', backgroundColor: '#000' }}
+          title={camera.name}
+        />
+      ) : isImageStream ? (
         <img
           src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
           className={className}

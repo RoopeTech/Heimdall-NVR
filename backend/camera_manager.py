@@ -792,7 +792,9 @@ class CameraManager:
             self.stop_camera(camera_id)
 
         stream_type = camera_info.get('stream_type', 'rtsp')
-        if stream_type == 'image_url':
+        if stream_type == 'website':
+            return
+        elif stream_type == 'image_url':
             thread = ImageUrlThread(camera_info)
         else:
             thread = CameraThread(camera_info)

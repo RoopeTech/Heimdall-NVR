@@ -979,13 +979,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                       <select className="form-input" value={streamType} onChange={(e) => setStreamType(e.target.value)}>
                         <option value="rtsp">RTSP / RTMP / Video Stream</option>
                         <option value="image_url">Image / GIF Auto-Refreshing URL</option>
+                        <option value="website">Website / Iframe Widget</option>
                       </select>
                     </div>
-                    {streamType === 'image_url' && (
+                    {(streamType === 'image_url' || streamType === 'website') && (
                       <>
                         <div className="form-group">
-                          <label className="form-label">Image/GIF URL</label>
-                          <input type="text" className="form-input" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                          <label className="form-label">{streamType === 'website' ? 'Website URL' : 'Image/GIF URL'}</label>
+                          <input type="text" className="form-input" value={streamType === 'website' ? mainUrl : imageUrl} onChange={(e) => streamType === 'website' ? setMainUrl(e.target.value) : setImageUrl(e.target.value)} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Refresh Interval (Seconds)</label>
@@ -1489,10 +1490,11 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 >
                   <option value="rtsp">📡 RTSP Stream (IP Camera)</option>
                   <option value="image_url">🖼️ Image / GIF URL</option>
+                  <option value="website">🌐 Website / Iframe Widget</option>
                 </select>
               </div>
 
-              {streamType === 'rtsp' ? (
+              {streamType === 'rtsp' && (
                 <>
                   <div className="form-group">
                     <label className="form-label">Main Stream URL (High Res)</label>
@@ -1522,7 +1524,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     </span>
                   </div>
                 </>
-              ) : (
+              )}
+              {streamType === 'image_url' && (
                 <>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">Image / GIF URL</label>
@@ -1551,6 +1554,25 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     />
                     <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       How often to re-fetch the image. Common values: <code>3600</code> (1 hr), <code>1800</code> (30 min), <code>300</code> (5 min), <code>30</code> (30 sec).
+                    </span>
+                  </div>
+                </>
+              )}
+              
+              {streamType === 'website' && (
+                <>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Website URL</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      value={mainUrl}
+                      onChange={(e) => setMainUrl(e.target.value)}
+                      placeholder="https://example.com/widget"
+                      required={streamType === 'website'}
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Enter the direct URL to the website. The NVR will display this website as an iframe widget on the dashboard.
                     </span>
                   </div>
                 </>
