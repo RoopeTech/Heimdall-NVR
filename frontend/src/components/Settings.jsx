@@ -446,6 +446,32 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     }
   };
 
+  const handleParseAzureMetadata = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const xml = event.target.result;
+      
+      const match = xml.match(/sts\.windows\.net\/([0-9a-fA-F-]+)\//i) || 
+                    xml.match(/login\.microsoftonline\.com\/([0-9a-fA-F-]+)\//i);
+      
+      if (match && match[1]) {
+        const tenantId = match[1];
+        setSsoAuthUrl(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`);
+        setSsoTokenUrl(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`);
+        setSsoProfileUrl(`https://graph.microsoft.com/oidc/userinfo`);
+        setSuccess('Azure Entra Metadata loaded successfully. OIDC URLs have been auto-populated!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setError('Could not find a valid Azure Tenant ID in the uploaded XML.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = null;
+  };
+
   const handleSaveSsoSettings = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -1442,6 +1468,16 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 <li><strong>Endpoints (URLs):</strong> On the Overview page, click the <strong>Endpoints</strong> tab at the top. You will find your Authorization endpoint (v2) and Token endpoint (v2).</li>
                 <li><strong>Profile URL:</strong> Use <code>https://graph.microsoft.com/oidc/userinfo</code></li>
               </ul>
+              
+              <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                <label className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', fontSize: '13px', padding: '8px 16px', margin: 0, backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                  <span style={{ marginRight: '8px' }}>📄</span> Auto-Fill from Federation Metadata XML
+                  <input type="file" accept=".xml" style={{ display: 'none' }} onChange={handleParseAzureMetadata} />
+                </label>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  Download the Federation Metadata XML from Azure and upload it here to auto-populate the URLs below.
+                </div>
+              </div>
             </div>
 
             <form onSubmit={handleSaveSsoSettings}>
