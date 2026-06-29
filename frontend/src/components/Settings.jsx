@@ -1419,6 +1419,19 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             <h2 style={{ marginBottom: '24px', fontSize: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
               Single Sign-On (OIDC) Configuration
             </h2>
+
+            <div style={{ backgroundColor: 'rgba(0,100,255,0.1)', border: '1px solid rgba(0,100,255,0.2)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--primary-color)' }}>Required Identity Provider Setup Information</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.4' }}>
+                When configuring your Identity Provider (Azure AD, WorkOS, SSOReady, Okta, etc.), you must provide this exact Redirect URI (Callback URL) in your app registration:
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <code style={{ flex: 1, padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: '6px', color: '#e2e8f0', fontSize: '13px', userSelect: 'all', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  {window.location.origin}/api/auth/sso/callback
+                </code>
+              </div>
+            </div>
+
             <form onSubmit={handleSaveSsoSettings}>
               <div className="form-group">
                 <label className="form-label">Enable SSO</label>
