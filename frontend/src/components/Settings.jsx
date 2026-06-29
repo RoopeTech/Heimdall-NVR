@@ -1432,6 +1432,18 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
               </div>
             </div>
 
+            <div style={{ backgroundColor: 'rgba(30,30,30,0.5)', border: '1px solid var(--border-light)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-primary)' }}>Azure Entra ID Setup Guide</h3>
+              <ul style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
+                <li><strong>App Registration:</strong> Go to Azure Entra ID &gt; App Registrations &gt; New Registration.</li>
+                <li><strong>Redirect URI:</strong> Select "Web" and paste the Callback URL from above.</li>
+                <li><strong>Client ID:</strong> Found on the Overview page ("Application (client) ID").</li>
+                <li><strong>Client Secret:</strong> Create one under "Certificates & secrets".</li>
+                <li><strong>Endpoints (URLs):</strong> On the Overview page, click the <strong>Endpoints</strong> tab at the top. You will find your Authorization endpoint (v2) and Token endpoint (v2).</li>
+                <li><strong>Profile URL:</strong> Use <code>https://graph.microsoft.com/oidc/userinfo</code></li>
+              </ul>
+            </div>
+
             <form onSubmit={handleSaveSsoSettings}>
               <div className="form-group">
                 <label className="form-label">Enable SSO</label>
