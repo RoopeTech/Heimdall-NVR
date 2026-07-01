@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function WebRTCPlayer({ cameraId, token, style, className }) {
+export default function WebRTCPlayer({ cameraId, token, style, className, micStream }) {
   const videoRef = useRef(null);
   const pcRef = useRef(null);
+  const audioTransceiverRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMuted, setIsMuted] = useState(true);
 
@@ -24,9 +25,10 @@ export default function WebRTCPlayer({ cameraId, token, style, className }) {
       }
     };
 
-    // go2rtc requires recvonly transceivers
+    // go2rtc WebRTC configuration
     pc.addTransceiver('video', { direction: 'recvonly' });
-    pc.addTransceiver('audio', { direction: 'recvonly' });
+    // Use sendrecv for audio so we can send push-to-talk mic streams
+    audioTransceiverRef.current = pc.addTransceiver('audio', { direction: 'sendrecv' });
 
     pc.createOffer()
       .then(offer => pc.setLocalDescription(offer))
@@ -63,6 +65,16 @@ export default function WebRTCPlayer({ cameraId, token, style, className }) {
       }
     };
   }, [cameraId, token]);
+
+  // Effect to seamlessly attach/detach the microphone track without renegotiating WebRTC
+  useEffect(() => {
+    if (audioTransceiverRef.current && audioTransceiverRef.current.sender) {
+      const track = micStream ? micStream.getAudioTracks()[0] : null;
+      audioTransceiverRef.current.sender.replaceTrack(track || null).catch(err => {
+        console.warn("Failed to replace WebRTC audio track:", err);
+      });
+    }
+  }, [micStream]);
 
   if (error) {
     return (

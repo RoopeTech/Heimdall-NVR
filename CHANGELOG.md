@@ -2,6 +2,11 @@
 
 All notable changes to the NVR project will be documented in this file.
 
+## [1.2.0] - 2026-07-01
+
+### Added
+- **Two-Way Audio (Push to Talk)**: Added a "Hold to Talk" microphone button in the Camera Details pane. When held down, the browser captures your local microphone and transmits it to the camera's built-in speaker with sub-second latency over WebRTC!
+
 ## [1.1.0] - 2026-07-01
 
 ### Added

@@ -11,7 +11,7 @@ import PTZControls from './PTZControls';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ camera, token, className, style, streamProfile, useWebrtc }) {
+function CameraStream({ camera, token, className, style, streamProfile, useWebrtc, micStream }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
@@ -104,7 +104,7 @@ function CameraStream({ camera, token, className, style, streamProfile, useWebrt
           title={camera.name}
         />
       ) : useWebrtc && !isImageStream ? (
-        <WebRTCPlayer cameraId={camera.id} token={token} className={className} style={{ ...style, objectFit: 'contain' }} />
+        <WebRTCPlayer cameraId={camera.id} token={token} className={className} style={{ ...style, objectFit: 'contain' }} micStream={micStream} />
       ) : isImageStream ? (
         <img
           src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
@@ -139,7 +139,10 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const [playbackMode, setPlaybackMode] = useState(false);
   const [activeRecording, setActiveRecording] = useState(null);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null);
-  const [mockMotionActive, setMockMotionActive] = useState(true);
+  const [mockMotionActive, setMockMotionActive] = useState(false);
+  const [micStream, setMicStream] = useState(null);
+  const [isTalking, setIsTalking] = useState(false);
+  const [micError, setMicError] = useState('');
   const [cameraEvents, setCameraEvents] = useState([]);
   const [dayRecordings, setDayRecordings] = useState([]);
   const d = new Date();
@@ -286,6 +289,50 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     transition: isDragging ? 'none' : 'transform 0.1s ease-out',
     touchAction: 'none',
   };
+
+  useEffect(() => {
+    return () => {
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [micStream]);
+
+  const handleTalkDown = async (e) => {
+    e.preventDefault();
+    if (!useWebrtc) {
+      setMicError('WebRTC is required for two-way audio');
+      return;
+    }
+    try {
+      setMicError('');
+      let stream = micStream;
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        setMicStream(stream);
+      }
+      setIsTalking(true);
+    } catch (err) {
+      console.error('Mic error:', err);
+      setMicError('Mic access denied');
+    }
+  };
+
+  const handleTalkUp = (e) => {
+    e.preventDefault();
+    setIsTalking(false);
+  };
+
+  // Keyboard navigation & Esc to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Load initial recording deep link if provided from Activity Log click
   useEffect(() => {
@@ -503,6 +550,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
                 style={transformStyle}
                 streamProfile={streamProfile}
                 useWebrtc={useWebrtc}
+                micStream={isTalking ? micStream : null}
               />
             ) : (
               <video
@@ -558,6 +606,33 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
 
         {/* Right Side: PTZ Controls, Event Log, Mock Switch */}
         <div className="modal-body-right">
+          {useWebrtc && !camera.main_url.includes('website') && (
+            <div className="glass-panel" style={{ padding: '16px', marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '13px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Two-Way Audio</h4>
+              <button 
+                className="btn btn-primary"
+                onMouseDown={handleTalkDown}
+                onMouseUp={handleTalkUp}
+                onMouseLeave={handleTalkUp}
+                onTouchStart={handleTalkDown}
+                onTouchEnd={handleTalkUp}
+                style={{ 
+                  width: '100%', 
+                  background: isTalking ? 'var(--accent-danger)' : undefined,
+                  borderColor: micError ? 'var(--accent-danger)' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  userSelect: 'none'
+                }}
+                title={micError || "Hold to Talk"}
+              >
+                {isTalking ? '🎤 Talking...' : '🎙️ Hold to Talk'}
+              </button>
+              {micError && <div style={{ color: 'var(--accent-danger)', fontSize: '11px', marginTop: '6px', textAlign: 'center' }}>{micError}</div>}
+            </div>
+          )}
           <PTZControls cameraId={camera.id} isMock={isMock} token={token} />
 
           {isMock && (
