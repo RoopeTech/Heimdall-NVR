@@ -41,7 +41,7 @@ class Go2RTCManager:
         streams = {}
         for cam in cameras:
             # We want to stream the live view (sub_url) for web playback
-            stream_url = self.inject_credentials(cam.get('sub_url', ''), cam.get('rtsp_user', ''), cam.get('rtsp_password', ''))
+            stream_url = self.inject_credentials(cam.get('sub_url', ''), cam.get('rtsp_user', ''), cam.get('rtsp_pass', ''))
             
             if stream_url:
                 # Add ffmpeg wrapper to transcode audio to AAC or Opus if necessary, 
