@@ -10,7 +10,7 @@ import PTZControls from './PTZControls';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ camera, token, className, style }) {
+function CameraStream({ camera, token, className, style, streamProfile }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
@@ -25,7 +25,7 @@ function CameraStream({ camera, token, className, style }) {
   const fetchFrame = useCallback(async () => {
     if (isImageStream || isWebsiteStream) return;
     try {
-      const res = await fetch(`/api/cameras/${camera?.id}/snapshot?hq=true`, {
+      const res = await fetch(`/api/cameras/${camera?.id}/snapshot?profile=${streamProfile}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -43,7 +43,7 @@ function CameraStream({ camera, token, className, style }) {
       consecutiveErrorsRef.current += 1;
       if (consecutiveErrorsRef.current >= ERROR_THRESHOLD) setStatus('error');
     }
-  }, [camera?.id, token, isImageStream]);
+  }, [camera?.id, token, isImageStream, streamProfile]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -59,12 +59,25 @@ function CameraStream({ camera, token, className, style }) {
       setStatus('loading');
       setBlobUrl(null);
       consecutiveErrorsRef.current = 0;
-      fetchFrame();
-      intervalRef.current = setInterval(fetchFrame, POLL_MS);
+      
+      const pollLoop = async () => {
+        if (!mountedRef.current) return;
+        const start = Date.now();
+        await fetchFrame();
+        if (!mountedRef.current) return;
+        const elapsed = Date.now() - start;
+        const delay = Math.max(30, POLL_MS - elapsed);
+        intervalRef.current = setTimeout(pollLoop, delay);
+      };
+      pollLoop();
     }
     return () => {
       mountedRef.current = false;
-      clearInterval(intervalRef.current);
+      if (isImageStream) {
+        clearInterval(intervalRef.current);
+      } else {
+        clearTimeout(intervalRef.current);
+      }
       if (prevBlobRef.current) {
         URL.revokeObjectURL(prevBlobRef.current);
         prevBlobRef.current = null;
@@ -130,6 +143,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const localTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState(localTodayStr);
   const [theatreMode, setTheatreMode] = useState(false);
+  const [streamProfile, setStreamProfile] = useState('hd');
   const videoRef = useRef(null);
 
   const isMock = camera.sub_url.startsWith('mock://');
@@ -409,6 +423,18 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {!playbackMode && camera.stream_type !== 'website' && camera.stream_type !== 'image_url' && (
+              <select
+                value={streamProfile}
+                onChange={(e) => setStreamProfile(e.target.value)}
+                className="form-input"
+                style={{ width: 'auto', padding: '6px 28px 6px 12px', height: 'auto', fontSize: '12px', minWidth: '100px', backgroundColor: 'rgba(0,0,0,0.4)', borderColor: 'var(--border-light)' }}
+              >
+                <option value="hd">JPEG HD (Max Quality)</option>
+                <option value="sd">JPEG SD (Good)</option>
+                <option value="low">JPEG Low (3G/Poor Wifi)</option>
+              </select>
+            )}
             <button
               className="btn btn-secondary"
               style={{ padding: '6px 12px', fontSize: '13px' }}
@@ -471,6 +497,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
                 token={token} 
                 className="camera-stream-img" 
                 style={transformStyle}
+                streamProfile={streamProfile}
               />
             ) : (
               <video

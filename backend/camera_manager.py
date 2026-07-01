@@ -194,6 +194,7 @@ class ImageUrlThread(threading.Thread):
         self.running = True
         self.latest_jpeg_bytes = None
         self.latest_hq_jpeg_bytes = None
+        self.latest_low_jpeg_bytes = None
         self.latest_raw_bytes = None
         self.latest_content_type = 'image/jpeg'
         self.is_mock = False
@@ -212,8 +213,12 @@ class ImageUrlThread(threading.Thread):
         _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
         self.latest_jpeg_bytes = buf.tobytes()
         self.latest_hq_jpeg_bytes = buf.tobytes()
+        self.latest_low_jpeg_bytes = buf.tobytes()
         self.latest_raw_bytes = buf.tobytes()
         self.latest_content_type = 'image/jpeg'
+
+    def get_latest_low_jpeg(self):
+        return self.latest_low_jpeg_bytes
 
     def _fetch_image(self):
         """Fetch the remote image and decode it with OpenCV."""
@@ -246,6 +251,16 @@ class ImageUrlThread(threading.Thread):
                 thumb = frame
             _, thumb_buf = cv2.imencode('.jpg', thumb, [cv2.IMWRITE_JPEG_QUALITY, 80])
             self.latest_jpeg_bytes = thumb_buf.tobytes()
+
+            # Low version (320px wide)
+            if w > 320:
+                scale_low = 320 / w
+                thumb_low = cv2.resize(frame, (320, int(h * scale_low)), interpolation=cv2.INTER_AREA)
+            else:
+                thumb_low = frame
+            _, low_buf = cv2.imencode('.jpg', thumb_low, [cv2.IMWRITE_JPEG_QUALITY, 50])
+            self.latest_low_jpeg_bytes = low_buf.tobytes()
+
             self.consecutive_failures = 0
             print(f"[ImageURL] [{self.name}] Fetched OK ({len(raw)} bytes, type: {content_type})")
 
@@ -262,6 +277,7 @@ class ImageUrlThread(threading.Thread):
             _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
             self.latest_jpeg_bytes = buf.tobytes()
             self.latest_hq_jpeg_bytes = buf.tobytes()
+            self.latest_low_jpeg_bytes = buf.tobytes()
 
     def stop(self):
         self.running = False
@@ -301,6 +317,7 @@ class CameraThread(threading.Thread):
         self.latest_stream_frame = None # Frame with motion boxes drawn for viewing
         self.latest_jpeg_bytes = None      # 640px-wide thumbnail for grid polling
         self.latest_hq_jpeg_bytes = None   # Full-resolution JPEG for detail modal
+        self.latest_low_jpeg_bytes = None  # 320px-wide JPEG for ultra-low bandwidth
         self.last_jpeg_time = 0
         self.consecutive_failures = 0
         self._generate_connecting_placeholder()
@@ -333,6 +350,9 @@ class CameraThread(threading.Thread):
         self.frame_buffer = [] # list of (timestamp, frame)
         self.max_buffer_seconds = max(1, self.pre_roll)
         
+    def get_latest_low_jpeg(self):
+        return self.latest_low_jpeg_bytes
+
     def run(self):
         while self.running:
             if self.is_mock:
@@ -483,6 +503,17 @@ class CameraThread(threading.Thread):
                             ret_hq, jpeg_hq = cv2.imencode('.jpg', display_frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
                             if ret_hq:
                                 self.latest_hq_jpeg_bytes = jpeg_hq.tobytes()
+
+                            # ── Ultra-Low-res JPEG (remote 3G) ───────────────────────────
+                            if w > 320:
+                                scale_low = 320.0 / w
+                                nh_low, nw_low = int(h * scale_low), 320
+                                stream_preview_low = cv2.resize(display_frame, (nw_low, nh_low))
+                            else:
+                                stream_preview_low = display_frame
+                            ret_low, jpeg_low = cv2.imencode('.jpg', stream_preview_low, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                            if ret_low:
+                                self.latest_low_jpeg_bytes = jpeg_low.tobytes()
 
                         except Exception as e:
                             print(f"[{self.name}] Error encoding stream frame: {e}")
@@ -943,6 +974,14 @@ class CameraManager:
         if camera_id in self.threads:
             thread = self.threads[camera_id]
             return thread.latest_hq_jpeg_bytes or thread.latest_jpeg_bytes
+        return None
+
+    def get_latest_low_jpeg(self, camera_id):
+        """Return ultra-low-resolution JPEG for poor remote connections.
+        Falls back to the standard thumbnail if Low hasn't been encoded yet."""
+        if camera_id in self.threads:
+            thread = self.threads[camera_id]
+            return thread.latest_low_jpeg_bytes or thread.latest_jpeg_bytes
         return None
         
     def ptz_control(self, camera_id, action, pan=0.0, tilt=0.0, zoom=1.0):

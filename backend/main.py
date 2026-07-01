@@ -130,13 +130,18 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
 # ?hq=true  \u2192 returns full-resolution JPEG (used by the detail/modal view)
 # ?hq=false \u2192 returns 640px-wide downscaled thumbnail (used by the camera grid)
 @app.get("/api/cameras/{camera_id}/snapshot")
-async def get_snapshot(camera_id: int, hq: bool = False, current_user: dict = Depends(get_current_user)):
+async def get_snapshot(camera_id: int, hq: bool = False, profile: str = None, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
     if not camera:
         raise HTTPException(status_code=404, detail="Camera not found")
 
-    if hq:
+    if profile is None:
+        profile = "hd" if hq else "sd"
+
+    if profile == "hd":
         jpeg_bytes = camera_manager.manager.get_latest_hq_jpeg(camera_id)
+    elif profile == "low":
+        jpeg_bytes = camera_manager.manager.get_latest_low_jpeg(camera_id)
     else:
         jpeg_bytes = camera_manager.manager.get_latest_jpeg(camera_id)
 

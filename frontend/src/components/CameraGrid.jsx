@@ -56,12 +56,25 @@ function CameraStream({ camera, token, className }) {
       setStatus('loading');
       setBlobUrl(null);
       consecutiveErrorsRef.current = 0;
-      fetchFrame();
-      intervalRef.current = setInterval(fetchFrame, POLL_MS);
+      
+      const pollLoop = async () => {
+        if (!mountedRef.current) return;
+        const start = Date.now();
+        await fetchFrame();
+        if (!mountedRef.current) return;
+        const elapsed = Date.now() - start;
+        const delay = Math.max(30, POLL_MS - elapsed);
+        intervalRef.current = setTimeout(pollLoop, delay);
+      };
+      pollLoop();
     }
     return () => {
       mountedRef.current = false;
-      clearInterval(intervalRef.current);
+      if (isImageStream) {
+        clearInterval(intervalRef.current);
+      } else {
+        clearTimeout(intervalRef.current);
+      }
       if (prevBlobRef.current) {
         URL.revokeObjectURL(prevBlobRef.current);
         prevBlobRef.current = null;
