@@ -348,7 +348,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
     // Seek the video player if already mounted and loaded
     if (videoRef.current) {
       const currentSrc = videoRef.current.src;
-      if (currentSrc && currentSrc.endsWith(recording.filepath)) {
+      if (currentSrc && currentSrc.includes(recording.filepath)) {
         videoRef.current.currentTime = offsetSeconds;
         videoRef.current.play().catch(err => console.log("Play failed: ", err));
       }
