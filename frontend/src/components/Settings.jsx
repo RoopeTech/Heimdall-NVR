@@ -923,14 +923,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     onChange={() => toggleCameraSelection(cam.id)}
                     style={{ marginTop: '4px', width: '20px', height: '20px', cursor: 'pointer' }}
                   />
-                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                    <div>
+                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <h4 style={{ fontSize: '16px', fontWeight: '600' }}>{cam.name}</h4>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      Main (recording): <code style={{ color: 'var(--primary)' }}>{cam.main_url}</code>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', wordBreak: 'break-all' }}>
+                      Main (recording): <code style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>{cam.main_url}</code>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Sub (live view): <code style={{ color: 'var(--primary)' }}>{cam.sub_url}</code>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', wordBreak: 'break-all' }}>
+                      Sub (live view): <code style={{ color: 'var(--primary)', wordBreak: 'break-all' }}>{cam.sub_url}</code>
                     </div>
                     {cam.main_url === cam.sub_url && cam.stream_type !== 'image_url' && (
                       <div style={{
