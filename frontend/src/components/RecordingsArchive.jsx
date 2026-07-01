@@ -91,7 +91,12 @@ export default function RecordingsArchive({ cameras, token, onEventClick }) {
 
   const handlePlayRecording = (rec) => {
     setPlayingRecording(rec);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const container = document.querySelector('.view-container');
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
