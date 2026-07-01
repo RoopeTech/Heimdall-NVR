@@ -455,25 +455,54 @@ def restore_settings(req: RestoreRequest, admin: dict = Depends(require_admin)):
 @app.get("/api/settings/check_update")
 def check_update(current_user: dict = Depends(get_current_user)):
     import subprocess
+    import re
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
         # Run git fetch origin to update remote references
         subprocess.run(["git", "fetch", "origin"], cwd=project_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
-        # Get local commit hash
+        
+        local_version = "0.0.0"
+        version_path = os.path.join(project_root, "VERSION")
+        if os.path.exists(version_path):
+            with open(version_path, "r") as f:
+                local_version = f.read().strip()
+                
+        remote_version = local_version
+        try:
+            remote_version = subprocess.check_output(["git", "show", "origin/master:VERSION"], cwd=project_root, text=True, stderr=subprocess.DEVNULL).strip()
+        except subprocess.CalledProcessError:
+            pass
+
+        def parse_v(v):
+            match = re.match(r'^v?(\d+)\.(\d+)\.(\d+)', v)
+            return tuple(map(int, match.groups())) if match else (0, 0, 0)
+            
+        update_available = parse_v(remote_version) > parse_v(local_version)
+        
+        changelog = ""
+        if update_available:
+            try:
+                changelog = subprocess.check_output(["git", "show", "origin/master:CHANGELOG.md"], cwd=project_root, text=True, stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                pass
+        
+        # Keep commit hashes for debugging/dev purposes
         local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=project_root, text=True).strip()
-        # Get remote master commit hash
         remote_commit = subprocess.check_output(["git", "rev-parse", "origin/master"], cwd=project_root, text=True).strip()
         
         return {
-            "update_available": local_commit != remote_commit,
+            "update_available": update_available,
+            "local_version": local_version,
+            "remote_version": remote_version,
             "local_commit": local_commit[:7],
-            "remote_commit": remote_commit[:7]
+            "remote_commit": remote_commit[:7],
+            "changelog": changelog
         }
     except Exception as e:
         return {
             "update_available": False,
-            "local_commit": "unknown",
-            "remote_commit": "unknown",
+            "local_version": "unknown",
+            "remote_version": "unknown",
             "error": str(e)
         }
 

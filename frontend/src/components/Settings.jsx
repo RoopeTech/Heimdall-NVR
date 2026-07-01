@@ -1153,14 +1153,16 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   <div>
                     <span style={{ color: 'var(--text-secondary)' }}>Current Version: </span>
                     <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--primary)' }}>
-                      {updateStatus.local_commit}
+                      v{updateStatus.local_version}
                     </code>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>({updateStatus.local_commit})</span>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-secondary)' }}>Latest Version: </span>
                     <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: updateStatus.update_available ? 'var(--accent-motion)' : 'var(--accent-success)' }}>
-                      {updateStatus.remote_commit}
+                      v{updateStatus.remote_version}
                     </code>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>({updateStatus.remote_commit})</span>
                   </div>
                 </div>
 
@@ -1169,6 +1171,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                     <div style={{ padding: '10px 14px', background: 'rgba(0, 242, 254, 0.08)', border: '1px solid var(--primary)', borderRadius: '8px', color: 'var(--primary)', fontSize: '13px', marginBottom: '16px' }}>
                       🚀 A new software update is available! Click below to pull updates and compile assets.
                     </div>
+                    {updateStatus.changelog && (
+                      <div style={{ padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', marginBottom: '16px', maxHeight: '200px', overflowY: 'auto' }}>
+                        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: 'var(--text-secondary)' }}>What's New:</h4>
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          {updateStatus.changelog}
+                        </pre>
+                      </div>
+                    )}
                     {updatingState === 'updating' ? (
                       <div style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '13px' }}>
                         ⏳ Applying updates and recompiling static UI assets... The server is restarting. Please wait 12s...
