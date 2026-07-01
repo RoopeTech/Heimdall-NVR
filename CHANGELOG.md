@@ -2,6 +2,11 @@
 
 All notable changes to the NVR project will be documented in this file.
 
+## [1.0.2] - 2026-07-01
+
+### Fixed
+- **Settings UI Layout**: Fixed a bug where extremely long camera stream URLs would stretch the container and push the Edit/Duplicate/Delete action buttons completely off the right edge of the screen.
+
 ## [1.0.1] - 2026-07-01
 
 ### Added
