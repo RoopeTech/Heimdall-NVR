@@ -138,6 +138,33 @@ async def get_live_stream(request: Request, camera_id: int, raw: bool = False, c
 # Single-frame JPEG Snapshot (used by frontend polling instead of MJPEG <img>)
 # ?hq=true  \u2192 returns full-resolution JPEG (used by the detail/modal view)
 # ?hq=false \u2192 returns 640px-wide downscaled thumbnail (used by the camera grid)
+@app.post("/api/cameras/{camera_id}/webrtc")
+async def webrtc_offer(camera_id: int, request: Request, current_user: dict = Depends(get_current_user)):
+    """Proxies SDP offers to go2rtc for WebRTC streaming."""
+    if database.get_system_setting('use_webrtc') != '1':
+        raise HTTPException(status_code=400, detail="WebRTC streaming is disabled in settings.")
+        
+    camera = database.get_camera(camera_id)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+        
+    offer = await request.body()
+    
+    # go2rtc default API port is 1984
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"http://127.0.0.1:1984/api/webrtc?src=cam_{camera_id}",
+                content=offer
+            )
+            if resp.status_code != 200:
+                print(f"go2rtc WebRTC Error: HTTP {resp.status_code} - {resp.text}")
+                raise HTTPException(status_code=500, detail=f"go2rtc rejected offer: {resp.text}")
+            return Response(content=resp.content, media_type="application/sdp")
+    except Exception as e:
+        print(f"go2rtc Connection Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/cameras/{camera_id}/snapshot")
 async def get_snapshot(camera_id: int, hq: bool = False, profile: str = None, current_user: dict = Depends(get_current_user)):
     camera = database.get_camera(camera_id)
