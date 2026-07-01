@@ -61,8 +61,18 @@ export default function Timeline({ recordings, selectedDate, onDateChange, onPla
       const offset = clickSeconds - startSec;
       onPlayRecording(clickedRec, offset);
     } else {
-      // Seek to nearest recording or let parent handle "no recording at this time"
-      onPlayRecording(null, clickSeconds);
+      // Seek to nearest preceding recording
+      const prevRecs = recordings.filter(r => getTimeInSecondsForDay(r.start_time) < clickSeconds);
+      if (prevRecs.length > 0) {
+          const nearestPrev = prevRecs[prevRecs.length - 1];
+          const startSec = getTimeInSecondsForDay(nearestPrev.start_time);
+          const endSec = nearestPrev.end_time ? getTimeInSecondsForDay(nearestPrev.end_time) : startSec + 10;
+          onPlayRecording(nearestPrev, endSec - startSec);
+      } else if (recordings.length > 0) {
+          onPlayRecording(recordings[0], 0);
+      } else {
+          onPlayRecording(null, clickSeconds);
+      }
     }
   };
 
@@ -198,7 +208,17 @@ export default function Timeline({ recordings, selectedDate, onDateChange, onPla
                 if (rec) {
                   onPlayRecording(rec, targetSec - getTimeInSecondsForDay(rec.start_time));
                 } else {
-                  onPlayRecording(null, targetSec);
+                  const prevRecs = recordings.filter(r => getTimeInSecondsForDay(r.start_time) < targetSec);
+                  if (prevRecs.length > 0) {
+                      const nearestPrev = prevRecs[prevRecs.length - 1];
+                      const startSec = getTimeInSecondsForDay(nearestPrev.start_time);
+                      const endSec = nearestPrev.end_time ? getTimeInSecondsForDay(nearestPrev.end_time) : startSec + 10;
+                      onPlayRecording(nearestPrev, endSec - startSec);
+                  } else if (recordings.length > 0) {
+                      onPlayRecording(recordings[0], 0);
+                  } else {
+                      onPlayRecording(null, targetSec);
+                  }
                 }
               }}
               style={{

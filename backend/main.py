@@ -346,7 +346,7 @@ def list_recordings(
     return database.get_recordings(camera_id, date)
 
 @app.get("/api/recordings/play/{filename}")
-def play_recording(filename: str, current_user: dict = Depends(get_current_user)):
+def play_recording(filename: str, request: Request, current_user: dict = Depends(get_current_user)):
     # Check if the file is archived
     recording = database.get_recording_by_filename(filename)
     
@@ -362,6 +362,40 @@ def play_recording(filename: str, current_user: dict = Depends(get_current_user)
         
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Recording file not found")
+        
+    file_size = os.path.getsize(filepath)
+    range_header = request.headers.get('Range')
+    
+    if range_header:
+        byte1, byte2 = 0, None
+        match = re.search(r'(\d+)-(?:\b(\d+)\b)?', range_header)
+        if match:
+            byte1 = int(match.group(1))
+            if match.group(2):
+                byte2 = int(match.group(2))
+        
+        byte2 = byte2 if byte2 is not None else file_size - 1
+        length = byte2 - byte1 + 1
+        
+        def file_iterator(filepath, offset, length, chunk_size=1024*1024):
+            with open(filepath, 'rb') as f:
+                f.seek(offset)
+                remaining = length
+                while remaining > 0:
+                    data = f.read(min(chunk_size, remaining))
+                    if not data:
+                        break
+                    remaining -= len(data)
+                    yield data
+
+        headers = {
+            'Content-Range': f'bytes {byte1}-{byte2}/{file_size}',
+            'Accept-Ranges': 'bytes',
+            'Content-Length': str(length),
+            'Content-Type': 'video/mp4',
+        }
+        return StreamingResponse(file_iterator(filepath, byte1, length), status_code=206, headers=headers)
+        
     return FileResponse(filepath, media_type="video/mp4")
 
 @app.get("/api/recordings/thumbnail/{filename}")
