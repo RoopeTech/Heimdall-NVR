@@ -12,6 +12,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('grid');
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [appTitle, setAppTitle] = useState('Heimdall NVR');
+  const [useWebrtc, setUseWebrtc] = useState(true);
   
   // Auth states
   const [token, setToken] = useState(localStorage.getItem('session_token') || '');
@@ -39,6 +40,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setAppTitle(data.app_title);
+        setUseWebrtc(data.use_webrtc === '1');
         document.title = data.app_title;
       }
     } catch (e) {
@@ -413,6 +415,7 @@ export default function App() {
             onSelectCamera={handleSelectCamera}
             onRefreshRecordings={fetchRecordings}
             token={token}
+            useWebrtc={useWebrtc}
           />
         )}
 
@@ -447,6 +450,7 @@ export default function App() {
           initialRecording={initialRecording}
           initialOffset={initialOffset}
           token={token}
+          useWebrtc={useWebrtc}
         />
       )}
 

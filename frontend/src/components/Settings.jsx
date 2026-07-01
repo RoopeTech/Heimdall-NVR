@@ -5,6 +5,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [editingCamera, setEditingCamera] = useState(null);
   const [appTitleInput, setAppTitleInput] = useState('');
   const [retentionDaysInput, setRetentionDaysInput] = useState('0');
+  const [useWebrtcInput, setUseWebrtcInput] = useState(true);
 
   // SSO Settings State
   const [ssoEnabled, setSsoEnabled] = useState('0');
@@ -329,6 +330,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           const data = await res.json();
           setAppTitleInput(data.app_title || '');
           setRetentionDaysInput(data.retention_days || '0');
+          setUseWebrtcInput(data.use_webrtc === '1');
           setSsoEnabled(data.sso_enabled || '0');
           setSsoClientId(data.sso_client_id || '');
           setSsoClientSecret(data.sso_client_secret || '');
@@ -428,7 +430,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
         },
         body: JSON.stringify({ 
           app_title: appTitleInput,
-          retention_days: parseInt(retentionDaysInput) || 0
+          retention_days: parseInt(retentionDaysInput) || 0,
+          use_webrtc: useWebrtcInput ? '1' : '0'
         }),
       });
       if (res.ok) {
@@ -1105,6 +1108,24 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           <form onSubmit={handleSaveSystemSettings}>
             <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>System Settings</h2>
             
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Streaming Engine</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                <input 
+                  type="checkbox"
+                  checked={useWebrtcInput}
+                  onChange={(e) => setUseWebrtcInput(e.target.checked)}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <div>
+                  <div style={{ fontWeight: '600' }}>Enable WebRTC (Low Latency + Audio)</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Uses go2rtc for sub-second streaming with audio. Uncheck to fallback to Legacy MJPEG (no audio).
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label className="form-label">Application Title</label>
               <input 

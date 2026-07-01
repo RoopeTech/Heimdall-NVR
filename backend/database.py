@@ -250,8 +250,9 @@ def init_db():
         cursor.execute("INSERT INTO system_settings (key, value) VALUES ('retention_days', '0')")
         conn.commit()
         
-    # SSO Default Settings
-    sso_defaults = [
+    # Default Settings
+    default_settings = [
+        ('use_webrtc', '1'),
         ('sso_enabled', '0'),
         ('sso_client_id', ''),
         ('sso_client_secret', ''),
@@ -259,7 +260,7 @@ def init_db():
         ('sso_token_url', ''),
         ('sso_profile_url', '')
     ]
-    for k, v in sso_defaults:
+    for k, v in default_settings:
         cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = ?", (k,))
         if cursor.fetchone()[0] == 0:
             cursor.execute("INSERT INTO system_settings (key, value) VALUES (?, ?)", (k, v))

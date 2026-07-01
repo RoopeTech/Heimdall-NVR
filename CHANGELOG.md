@@ -2,6 +2,14 @@
 
 All notable changes to the NVR project will be documented in this file.
 
+## [1.1.0] - 2026-07-01
+
+### Added
+- **Live Audio & WebRTC**: Overhauled the live streaming engine to use `go2rtc` for ultra-low latency WebRTC streaming with full audio support!
+- **Recorded Audio**: Recordings now convert and preserve the raw camera audio into AAC format so they can be played natively in the browser.
+- **Cross-Platform Auto-Installer**: The backend now features a fully automated bootstrapping script that downloads the correct static `ffmpeg` and `go2rtc` binaries for your OS (Windows, Linux, macOS) on first launch. No manual dependencies required!
+- **Streaming Fallback Setting**: Added a "Streaming Engine" toggle to the Settings page. Users who encounter issues with WebRTC can easily uncheck this box to instantly fall back to the legacy MJPEG engine.
+
 ## [1.0.2] - 2026-07-01
 
 ### Fixed

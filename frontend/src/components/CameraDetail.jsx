@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Timeline from './Timeline';
+import WebRTCPlayer from './WebRTCPlayer';
 import PTZControls from './PTZControls';
 
 /**
@@ -10,7 +11,7 @@ import PTZControls from './PTZControls';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ camera, token, className, style, streamProfile }) {
+function CameraStream({ camera, token, className, style, streamProfile, useWebrtc }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
@@ -53,7 +54,7 @@ function CameraStream({ camera, token, className, style, streamProfile }) {
       intervalRef.current = setInterval(() => {
         setRefreshKey(Date.now());
       }, interval);
-    } else if (isWebsiteStream) {
+    } else if (isWebsiteStream || useWebrtc) {
       setStatus('live');
     } else {
       setStatus('loading');
@@ -83,7 +84,7 @@ function CameraStream({ camera, token, className, style, streamProfile }) {
         prevBlobRef.current = null;
       }
     };
-  }, [camera?.id, fetchFrame, isImageStream, camera?.image_refresh_interval]);
+  }, [camera?.id, fetchFrame, isImageStream, camera?.image_refresh_interval, useWebrtc, isWebsiteStream]);
 
   // Overlay style — fills the positioned ancestor (camera-stream-container)
   const overlayStyle = {
@@ -102,6 +103,8 @@ function CameraStream({ camera, token, className, style, streamProfile }) {
           style={{ ...style, border: 'none', backgroundColor: '#000', pointerEvents: 'auto' }}
           title={camera.name}
         />
+      ) : useWebrtc && !isImageStream ? (
+        <WebRTCPlayer cameraId={camera.id} token={token} className={className} style={{ ...style, objectFit: 'contain' }} />
       ) : isImageStream ? (
         <img
           src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
@@ -132,7 +135,7 @@ function CameraStream({ camera, token, className, style, streamProfile }) {
 }
 
 
-export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset, token }) {
+export default function CameraDetail({ camera, onClose, recordings, onRefreshRecordings, initialRecording, initialOffset, token, useWebrtc }) {
   const [playbackMode, setPlaybackMode] = useState(false);
   const [activeRecording, setActiveRecording] = useState(null);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(null);
@@ -499,6 +502,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
                 className="camera-stream-img" 
                 style={transformStyle}
                 streamProfile={streamProfile}
+                useWebrtc={useWebrtc}
               />
             ) : (
               <video

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import WebRTCPlayer from './WebRTCPlayer';
 
 /**
  * CameraStream — polls /api/cameras/{id}/snapshot every POLL_MS milliseconds.
@@ -7,7 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 const POLL_MS = 150;
 const ERROR_THRESHOLD = 4;
 
-function CameraStream({ camera, token, className }) {
+function CameraStream({ camera, token, className, useWebrtc }) {
   const [blobUrl, setBlobUrl]        = useState(null);
   const [status, setStatus]          = useState('loading');
   const intervalRef                  = useRef(null);
@@ -99,6 +100,8 @@ function CameraStream({ camera, token, className }) {
           style={{ border: 'none', pointerEvents: 'none', backgroundColor: '#000' }}
           title={camera.name}
         />
+      ) : useWebrtc && !isWebsiteStream && !isImageStream ? (
+        <WebRTCPlayer cameraId={camera.id} token={token} className={className} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       ) : isImageStream ? (
         <img
           src={`/api/cameras/${camera.id}/proxy_image?token=${token}&t=${refreshKey}`}
@@ -147,7 +150,7 @@ const LAYOUT_PRESETS = [
   { value: '4',     label: '4×' },
 ];
 
-export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token }) {
+export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefreshRecordings, token, useWebrtc }) {
   const [layoutCols, setLayoutCols] = useState(() => {
     return localStorage.getItem('nvr_layout_cols') || 'auto';
   });

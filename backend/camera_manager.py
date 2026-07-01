@@ -618,15 +618,15 @@ class CameraThread(threading.Thread):
         local_ffmpeg = os.path.join(local_bin_dir, "ffmpeg.exe" if os.name == 'nt' else "ffmpeg")
         ffmpeg_cmd = local_ffmpeg if os.path.exists(local_ffmpeg) else "ffmpeg"
                 
-        # Command: copy H264 stream without transcoding
+        # Command: copy H264 stream without transcoding, convert audio to AAC
         # -movflags +faststart moves the index (moov atom) to the beginning for remote progressive streaming
         auth_main_url = inject_credentials(self.main_url, self.rtsp_user, self.rtsp_pass)
         cmd = [
             ffmpeg_cmd, '-y',
             '-rtsp_transport', 'tcp',
             '-i', auth_main_url,
-            '-c', 'copy',
-            '-an', # disable audio to avoid format mismatches
+            '-c:v', 'copy',
+            '-c:a', 'aac', # Convert audio to AAC for web browser compatibility
             '-movflags', '+faststart',
             '-f', 'mp4',
             self.temp_filepath

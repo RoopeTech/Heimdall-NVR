@@ -10,7 +10,13 @@ from datetime import datetime
 from typing import Optional
 
 import database
+import bootstrap
+
+# Ensure ffmpeg and go2rtc are downloaded if missing
+bootstrap.ensure_binaries()
+
 import camera_manager
+from go2rtc_manager import manager as go2rtc_manager
 import httpx
 import re
 from urllib.parse import urlparse
@@ -62,11 +68,14 @@ async def startup_event():
     proxy_client = httpx.AsyncClient(verify=False)
     database.init_db()
     camera_manager.manager.start_all()
+    if database.get_system_setting('use_webrtc') == '1':
+        go2rtc_manager.sync_cameras(database.get_cameras())
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     camera_manager.manager.stop_all()
+    go2rtc_manager.stop()
     if proxy_client:
         await proxy_client.aclose()
 
@@ -453,7 +462,8 @@ def list_events(camera_id: int = Query(None), date: str = Query(None), limit: in
 def get_system_settings(current_user: dict = Depends(get_current_user)):
     return {
         "app_title": database.get_system_setting("app_title") or "Heimdall NVR",
-        "retention_days": database.get_system_setting("retention_days") or "0"
+        "retention_days": database.get_system_setting("retention_days") or "0",
+        "use_webrtc": database.get_system_setting("use_webrtc") or "1"
     }
 
 @app.post("/api/settings")
@@ -462,6 +472,12 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         database.set_system_setting("app_title", data["app_title"])
     if "retention_days" in data:
         database.set_system_setting("retention_days", str(data["retention_days"]))
+    if "use_webrtc" in data:
+        database.set_system_setting("use_webrtc", str(data["use_webrtc"]))
+        if str(data["use_webrtc"]) == '1':
+            go2rtc_manager.sync_cameras(database.get_cameras())
+        else:
+            go2rtc_manager.stop()
     return {"success": True}
 
 from pydantic import BaseModel
