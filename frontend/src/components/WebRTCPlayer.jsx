@@ -34,14 +34,14 @@ export default function WebRTCPlayer({ cameraId, token, style, className }) {
         const offer = pc.localDescription.sdp;
         return fetch(`/api/cameras/${cameraId}/webrtc?token=${token}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
           body: offer
         });
       })
-      .then(response => {
-        if (!response.ok) throw new Error("Failed to negotiate WebRTC");
+      .then(async response => {
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`WebRTC Error (${response.status}): ${text}`);
+        }
         return response.text();
       })
       .then(answer => {
