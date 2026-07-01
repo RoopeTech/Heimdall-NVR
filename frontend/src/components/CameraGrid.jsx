@@ -99,6 +99,8 @@ function CameraStream({ camera, token, className, useWebrtc }) {
           className={className}
           style={{ border: 'none', pointerEvents: 'none', backgroundColor: '#000' }}
           title={camera.name}
+          allow="microphone; camera; autoplay; fullscreen; display-capture; clipboard-read; clipboard-write"
+          allowFullScreen
         />
       ) : useWebrtc && !isWebsiteStream && !isImageStream ? (
         <WebRTCPlayer cameraId={camera.id} token={token} className={className} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
