@@ -89,6 +89,11 @@ export default function RecordingsArchive({ cameras, token, onEventClick }) {
     return cam ? cam.name : `Camera ${cid}`;
   };
 
+  const handlePlayRecording = (rec) => {
+    setPlayingRecording(rec);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="view-container fade-in">
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -283,7 +288,7 @@ export default function RecordingsArchive({ cameras, token, onEventClick }) {
                   <div 
                     key={rec.id} 
                     className="event-item"
-                    onClick={() => setPlayingRecording(rec)}
+                    onClick={() => handlePlayRecording(rec)}
                     style={{ 
                       padding: '16px', 
                       background: `linear-gradient(to top, rgba(18,22,38,0.95) 0%, rgba(18,22,38,0.4) 60%, rgba(18,22,38,0.1) 100%), url(/api/recordings/thumbnail/${rec.filepath}?token=${token})`, 
