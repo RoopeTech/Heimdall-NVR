@@ -4,6 +4,7 @@ export default function WebRTCPlayer({ cameraId, token, style, className }) {
   const videoRef = useRef(null);
   const pcRef = useRef(null);
   const [error, setError] = useState(null);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     let pc = new RTCPeerConnection({
@@ -71,15 +72,50 @@ export default function WebRTCPlayer({ cameraId, token, style, className }) {
     );
   }
 
+  const wrapperStyle = { ...style, position: 'relative', overflow: 'hidden' };
+  const objectFit = wrapperStyle.objectFit || 'contain';
+  delete wrapperStyle.objectFit; // ensure objectFit applies only to the video
+
   return (
-    <video
-      ref={videoRef}
-      style={style}
-      className={className}
-      autoPlay
-      playsInline
-      muted // Required by browsers for autoplay!
-      controls={false} // Hidden controls for live view (can be overridden or handled externally)
-    />
+    <div style={wrapperStyle} className={className}>
+      <video
+        ref={videoRef}
+        style={{ width: '100%', height: '100%', objectFit }}
+        autoPlay
+        playsInline
+        muted={isMuted} // React manages muted state now
+        controls={false}
+      />
+      
+      {/* Custom Audio Toggle Overlay */}
+      <div 
+        onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+        style={{
+          position: 'absolute',
+          bottom: '12px',
+          right: '12px',
+          background: 'rgba(0, 0, 0, 0.65)',
+          color: '#fff',
+          padding: '6px 8px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+          backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          transition: 'all 0.2s',
+          userSelect: 'none'
+        }}
+        title={isMuted ? "Unmute Audio" : "Mute Audio"}
+        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.85)'}
+        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.65)'}
+      >
+        {isMuted ? "🔇" : "🔊"}
+      </div>
+    </div>
   );
 }
