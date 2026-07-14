@@ -511,7 +511,12 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
           <div 
             ref={containerRef}
             className="camera-stream-container" 
-            style={{ borderRadius: '12px', overflow: 'hidden' }}
+            style={{ borderRadius: '12px', overflow: 'hidden', cursor: theatreMode && zoomScale === 1 && !playbackMode ? 'pointer' : undefined }}
+            onClick={() => {
+              if (theatreMode && zoomScale === 1 && !playbackMode) {
+                onClose();
+              }
+            }}
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
