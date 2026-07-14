@@ -1166,6 +1166,44 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
               </span>
             </div>
 
+            <h3 style={{ fontSize: '18px', marginBottom: '12px', color: 'var(--primary)', marginTop: '24px' }}>Webhooks & Notifications</h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.4' }}>
+              Configure Discord or Telegram webhooks to receive a notification and a short video clip when motion is detected.
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Discord Webhook URL</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={discordWebhookUrl} 
+                onChange={(e) => setDiscordWebhookUrl(e.target.value)} 
+                placeholder="https://discord.com/api/webhooks/..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Telegram Bot Token</label>
+              <input 
+                type="password" 
+                className="form-input" 
+                value={telegramBotToken} 
+                onChange={(e) => setTelegramBotToken(e.target.value)} 
+                placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Telegram Chat ID</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={telegramChatId} 
+                onChange={(e) => setTelegramChatId(e.target.value)} 
+                placeholder="-1001234567890"
+              />
+            </div>
+
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Settings'}
