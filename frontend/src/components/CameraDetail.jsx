@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Timeline from './Timeline';
 import WebRTCPlayer from './WebRTCPlayer';
 import PTZControls from './PTZControls';
 
@@ -150,7 +149,7 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
   const d = new Date();
   const localTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const [selectedDate, setSelectedDate] = useState(localTodayStr);
-  const [theatreMode, setTheatreMode] = useState(false);
+  const [theatreMode, setTheatreMode] = useState(true);
   const [streamProfile, setStreamProfile] = useState('hd');
   const videoRef = useRef(null);
 
@@ -594,16 +593,6 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             )}
           </div>
 
-          {!theatreMode && (
-            <Timeline 
-              recordings={dayRecordings}
-              selectedDate={selectedDate}
-              onDateChange={setSelectedDate}
-              onPlayRecording={handlePlayRecording}
-              currentPlaybackTime={playbackMode ? currentPlaybackTime : new Date()}
-              events={cameraEvents}
-            />
-          )}
         </div>
 
         {/* Right Side: PTZ Controls, Event Log, Mock Switch */}

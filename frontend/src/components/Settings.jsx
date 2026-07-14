@@ -1831,7 +1831,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                   <option value="view_only">View Only (No recording, live feed only)</option>
                 </select>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Continuous recordings are automatically split into 15-minute segments for easy timeline scrubbing and playback.
+                  Continuous recordings are automatically split into 15-minute segments for easy playback.
                 </span>
               </div>
 

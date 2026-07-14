@@ -326,7 +326,7 @@ export default function CameraGrid({ cameras, recordings, onSelectCamera, onRefr
                   <button
                     className="nvr-action-btn"
                     onClick={() => onSelectCamera(cam)}
-                    title="Open Detail / Timeline / PTZ"
+                    title="Open Detail / PTZ"
                   >
                     ⛶
                   </button>
