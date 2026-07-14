@@ -6,6 +6,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [appTitleInput, setAppTitleInput] = useState('');
   const [retentionDaysInput, setRetentionDaysInput] = useState('0');
   const [useWebrtcInput, setUseWebrtcInput] = useState(true);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [telegramBotToken, setTelegramBotToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
 
   // SSO Settings State
   const [ssoEnabled, setSsoEnabled] = useState('0');
@@ -331,6 +334,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           setAppTitleInput(data.app_title || '');
           setRetentionDaysInput(data.retention_days || '0');
           setUseWebrtcInput(data.use_webrtc === '1');
+          setDiscordWebhookUrl(data.discord_webhook_url || '');
+          setTelegramBotToken(data.telegram_bot_token || '');
+          setTelegramChatId(data.telegram_chat_id || '');
           setSsoEnabled(data.sso_enabled || '0');
           setSsoClientId(data.sso_client_id || '');
           setSsoClientSecret(data.sso_client_secret || '');
@@ -431,7 +437,10 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
         body: JSON.stringify({ 
           app_title: appTitleInput,
           retention_days: parseInt(retentionDaysInput) || 0,
-          use_webrtc: useWebrtcInput ? '1' : '0'
+          use_webrtc: useWebrtcInput ? '1' : '0',
+          discord_webhook_url: discordWebhookUrl,
+          telegram_bot_token: telegramBotToken,
+          telegram_chat_id: telegramChatId
         }),
       });
       if (res.ok) {

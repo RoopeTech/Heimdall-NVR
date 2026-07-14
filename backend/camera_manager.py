@@ -7,6 +7,7 @@ import os
 import signal
 from datetime import datetime
 import database
+import notifications
 
 # Force OpenCV's FFmpeg backend to use TCP transport and set a 5-second connection/read timeout
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;5000000"
@@ -685,6 +686,11 @@ class CameraThread(threading.Thread):
                 duration = (end_time - self.record_start_time).total_seconds()
                 database.update_recording_end(self.recording_id, end_time.isoformat(), duration)
                 print(f"[{self.name}] Recording saved: {self.record_filepath} ({duration:.1f}s)")
+                
+                try:
+                    notifications.send_motion_notification_async(self.name, self.record_filepath, self.latest_hq_jpeg_bytes)
+                except Exception as ne:
+                    print(f"[{self.name}] Failed to send notification: {ne}")
             except Exception as e:
                 print(f"[{self.name}] Error moving recording file: {e}")
         else:

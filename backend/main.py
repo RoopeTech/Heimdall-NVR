@@ -490,7 +490,10 @@ def get_system_settings(current_user: dict = Depends(get_current_user)):
     return {
         "app_title": database.get_system_setting("app_title") or "Heimdall NVR",
         "retention_days": database.get_system_setting("retention_days") or "0",
-        "use_webrtc": database.get_system_setting("use_webrtc") or "1"
+        "use_webrtc": database.get_system_setting("use_webrtc") or "1",
+        "discord_webhook_url": database.get_system_setting("discord_webhook_url") or "",
+        "telegram_bot_token": database.get_system_setting("telegram_bot_token") or "",
+        "telegram_chat_id": database.get_system_setting("telegram_chat_id") or ""
     }
 
 @app.post("/api/settings")
@@ -505,6 +508,14 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
             go2rtc_manager.sync_cameras(database.get_cameras())
         else:
             go2rtc_manager.stop()
+    
+    if "discord_webhook_url" in data:
+        database.set_system_setting("discord_webhook_url", data["discord_webhook_url"])
+    if "telegram_bot_token" in data:
+        database.set_system_setting("telegram_bot_token", data["telegram_bot_token"])
+    if "telegram_chat_id" in data:
+        database.set_system_setting("telegram_chat_id", data["telegram_chat_id"])
+        
     return {"success": True}
 
 from pydantic import BaseModel
