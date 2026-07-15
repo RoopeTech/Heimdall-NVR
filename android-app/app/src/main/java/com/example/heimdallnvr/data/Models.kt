@@ -1,7 +1,17 @@
 package com.example.heimdallnvr.data
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonPrimitive
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -30,6 +40,29 @@ data class ChangePasswordRequest(
 
 // ── Cameras ───────────────────────────────────────────────────────────────────
 
+/**
+ * Handles backends that return boolean fields as 0/1 integers instead of JSON true/false.
+ * Accepts both "true"/"false" JSON booleans and 0/1 integers transparently.
+ */
+object BooleanAsIntSerializer : KSerializer<Boolean> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("BooleanAsInt", PrimitiveKind.INT)
+
+    override fun serialize(encoder: Encoder, value: Boolean) {
+        encoder.encodeInt(if (value) 1 else 0)
+    }
+
+    override fun deserialize(decoder: Decoder): Boolean {
+        // Handle both JSON boolean (true/false) and integer (0/1)
+        return if (decoder is JsonDecoder) {
+            val element = decoder.decodeJsonElement().jsonPrimitive
+            try { element.boolean } catch (_: Exception) { element.int != 0 }
+        } else {
+            decoder.decodeInt() != 0
+        }
+    }
+}
+
 @Serializable
 data class Camera(
     val id: Int,
@@ -38,12 +71,12 @@ data class Camera(
     @SerialName("sub_url") val subUrl: String = "",
     @SerialName("record_mode") val recordMode: String = "motion", // motion|always|hybrid|view_only
     @SerialName("stream_type") val streamType: String = "rtsp",   // rtsp|image_url|website
-    @SerialName("ptz_enabled") val ptzEnabled: Boolean = false,
+    @SerialName("ptz_enabled") @Serializable(with = BooleanAsIntSerializer::class) val ptzEnabled: Boolean = false,
     @SerialName("ptz_type") val ptzType: String = "onvif",
     @SerialName("rtsp_user") val rtspUser: String? = null,
     @SerialName("rtsp_pass") val rtspPass: String? = null,
-    @SerialName("osd_enabled") val osdEnabled: Boolean = false,
-    @SerialName("motion_enabled") val motionEnabled: Boolean = true,
+    @SerialName("osd_enabled") @Serializable(with = BooleanAsIntSerializer::class) val osdEnabled: Boolean = false,
+    @SerialName("motion_enabled") @Serializable(with = BooleanAsIntSerializer::class) val motionEnabled: Boolean = true,
     @SerialName("motion_sensitivity") val motionSensitivity: Int = 50,
     @SerialName("pre_roll") val preRoll: Int = 2,
     @SerialName("post_roll") val postRoll: Int = 10,
