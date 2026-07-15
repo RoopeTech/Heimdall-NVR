@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.heimdallnvr.data.Camera
 import com.example.heimdallnvr.theme.*
 
@@ -42,7 +43,7 @@ fun CameraGridScreen(
                     Text(
                         "HEIMDALL",
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.dp,
+                        letterSpacing = 2.sp,
                         color = NeonOrange
                     )
                 },
