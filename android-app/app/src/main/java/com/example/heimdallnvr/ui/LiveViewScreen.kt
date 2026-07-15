@@ -5,15 +5,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.request.CachePolicy
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import com.example.heimdallnvr.data.Camera
 import com.example.heimdallnvr.api.NvrApi
 import com.example.heimdallnvr.data.PtzRequest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,17 +49,27 @@ fun LiveViewScreen(
                 .fillMaxSize()
         ) {
             // Video Player Area (Using MJPEG/Snapshot fallback for V1)
+            var timestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+            
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(500) // Poll every 0.5 seconds in live view
+                    timestamp = System.currentTimeMillis()
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
             ) {
-                val snapshotUrl = "$serverUrl/api/cameras/${camera.id}/snapshot"
+                val snapshotUrl = "$serverUrl/api/cameras/${camera.id}/snapshot?t=$timestamp"
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(snapshotUrl)
-                        .addHeader("Authorization", "Bearer $apiToken")
-                        .crossfade(true)
+                        .httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $apiToken").build())
+                        .memoryCachePolicy(CachePolicy.DISABLED)
+                        .diskCachePolicy(CachePolicy.DISABLED)
                         .build(),
                     contentDescription = camera.name,
                     contentScale = ContentScale.Fit,
