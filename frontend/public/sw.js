@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nvr-app-v1';
+const CACHE_NAME = 'nvr-app-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

@@ -42,6 +42,11 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [groups, setGroups] = useState([]);
   const [newGroupName, setNewGroupName] = useState('');
 
+  // API Tokens State
+  const [apiTokens, setApiTokens] = useState([]);
+  const [newTokenName, setNewTokenName] = useState('');
+  const [newlyGeneratedToken, setNewlyGeneratedToken] = useState(null);
+
   const fetchGroups = async () => {
     try {
       const res = await fetch('/api/groups', {
@@ -180,7 +185,65 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     if (activeTab === 'groups' && currentUser?.role === 'admin') {
       fetchGroups();
     }
+    if (activeTab === 'tokens' && currentUser?.role === 'admin') {
+      fetchApiTokens();
+      setNewlyGeneratedToken(null);
+      setNewTokenName('');
+    }
   }, [activeTab]);
+
+  const fetchApiTokens = async () => {
+    try {
+      const res = await fetch('/api/tokens', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setApiTokens(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGenerateToken = async (e) => {
+    e.preventDefault();
+    if (!newTokenName.trim()) return;
+    try {
+      const res = await fetch('/api/tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newTokenName.trim() })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNewlyGeneratedToken(data.token);
+        setNewTokenName('');
+        fetchApiTokens();
+      } else {
+        setError('Failed to generate token');
+      }
+    } catch (e) {
+      setError(e.toString());
+    }
+  };
+
+  const handleRevokeToken = async (tokenValue) => {
+    if (!window.confirm("Are you sure you want to revoke this token?")) return;
+    try {
+      const res = await fetch(`/api/tokens/${tokenValue}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchApiTokens();
+      }
+    } catch (e) {
+      setError(e.toString());
+    }
+  };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
@@ -928,6 +991,14 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             🔐 SSO
           </button>
         )}
+        {currentUser?.role === 'admin' && (
+          <button 
+            className={`settings-nav-btn ${activeTab === 'tokens' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tokens')}
+          >
+            🔑 API Tokens
+          </button>
+        )}
         {activeTab === 'form' && editingCamera && (
           <button className="settings-nav-btn active">
             📝 Edit: {editingCamera.name}
@@ -1582,6 +1653,62 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 ))
               )}
             </div>
+          </div>
+        ) : activeTab === 'tokens' && currentUser?.role === 'admin' ? (
+          <div className="fade-in">
+            <h2 style={{ marginBottom: '24px', fontSize: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+              API Tokens & Integrations
+            </h2>
+            
+            {newlyGeneratedToken && (
+              <div style={{ backgroundColor: 'rgba(16,185,129,0.1)', border: '1px solid var(--accent-success)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--accent-success)' }}>Token Generated Successfully!</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  Please copy this token now. You will not be able to see it again.
+                </p>
+                <code style={{ display: 'block', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '4px', userSelect: 'all', fontSize: '14px', wordBreak: 'break-all' }}>
+                  {newlyGeneratedToken}
+                </code>
+              </div>
+            )}
+
+            <form onSubmit={handleGenerateToken} style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Android App, Home Assistant"
+                value={newTokenName}
+                onChange={(e) => setNewTokenName(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="btn btn-primary" disabled={!newTokenName.trim()}>
+                Generate Token
+              </button>
+            </form>
+
+            <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>Active Tokens</h3>
+            {apiTokens.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No API tokens found.</p>
+            ) : (
+              <div className="grid-list">
+                {apiTokens.map(t => (
+                  <div key={t.token} className="grid-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '500', marginBottom: '4px' }}>{t.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Created: {new Date(t.created_at).toLocaleString()}</div>
+                      <code style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t.token_preview}</code>
+                    </div>
+                    <button 
+                      className="btn btn-danger" 
+                      onClick={() => handleRevokeToken(t.token)}
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : activeTab === 'sso' && currentUser?.role === 'admin' ? (
           <div className="fade-in">

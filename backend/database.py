@@ -207,6 +207,17 @@ def init_db():
     )
     """)
 
+    # Create api_tokens table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS api_tokens (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+    """)
+
     # Create camera_groups table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS camera_groups (
@@ -762,7 +773,39 @@ def delete_user(user_id):
     conn.close()
     return count > 0
 
-# Session CRUD Operations
+# ---------------------------------------------------------
+# API Token Management
+# ---------------------------------------------------------
+
+def create_api_token(user_id, token_name, token):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO api_tokens (token, user_id, name, created_at) VALUES (?, ?, ?, ?)",
+        (token, user_id, token_name, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+def get_api_tokens(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT token, name, created_at FROM api_tokens WHERE user_id = ?", (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"token": row["token"], "name": row["name"], "created_at": row["created_at"]} for row in rows]
+
+def delete_api_token(token, user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM api_tokens WHERE token = ? AND user_id = ?", (token, user_id))
+    conn.commit()
+    conn.close()
+
+# ---------------------------------------------------------
+# Session Management
+# ---------------------------------------------------------
+
 def create_session(user_id, token, expires_at):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -775,18 +818,38 @@ def create_session(user_id, token, expires_at):
 
 def get_session_user(token):
     conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check sessions table
     now_str = datetime.now().isoformat()
-    row = conn.execute(
+    cursor.execute(
         """
         SELECT users.id, users.username, users.role 
-        FROM sessions 
-        JOIN users ON sessions.user_id = users.id 
+        FROM users 
+        JOIN sessions ON users.id = sessions.user_id 
         WHERE sessions.token = ? AND sessions.expires_at > ?
-        """,
+        """, 
         (token, now_str)
-    ).fetchone()
+    )
+    user = cursor.fetchone()
+    
+    # If not in sessions, check api_tokens
+    if not user:
+        cursor.execute(
+            """
+            SELECT users.id, users.username, users.role 
+            FROM users 
+            JOIN api_tokens ON users.id = api_tokens.user_id 
+            WHERE api_tokens.token = ?
+            """, 
+            (token,)
+        )
+        user = cursor.fetchone()
+        
     conn.close()
-    return dict(row) if row else None
+    if user:
+        return dict(user)
+    return None
 
 def delete_session(token):
     conn = get_db_connection()
