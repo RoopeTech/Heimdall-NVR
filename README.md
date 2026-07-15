@@ -85,11 +85,7 @@ ip-camera-nvr/
 ## 🛠️ Setup & Installation
 
 ### 1. Clone the Repository
-Before installing, you must clone the repository from Gitea and enter the project folder. Run this on your machine:
-```bash
-git clone http://<YOUR_GIT_SERVER_IP>:3000/roopetech/RTNVR.git
-cd RTNVR
-```
+Before installing, you must clone the repository from Gitea and enter the project folder. 
 *(All installation and update commands must be run from inside this folder).*
 
 ### 2. Run the Automated Installer
