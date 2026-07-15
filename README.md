@@ -140,3 +140,8 @@ To manage the NVR application, check for updates, or backup settings, navigate t
 ## 🔒 Security Best Practices
 *   **Default Credentials**: Seeding a new database creates a default administrator account. A warning banner will display on the interface until the password is changed. Change this immediately using the profile menu dropdown in the top-right header.
 *   **Header Authorization**: All media streaming (/live and playback) and API endpoints are protected.
+
+---
+
+## 🤖 Acknowledgements
+This application was developed with the assistance of **Antigravity**, an advanced agentic AI coding assistant built by the Google DeepMind team.
