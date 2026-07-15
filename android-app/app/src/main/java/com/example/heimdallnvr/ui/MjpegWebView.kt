@@ -19,12 +19,13 @@ fun MjpegWebView(
         factory = { context ->
             WebView(context).apply {
                 settings.apply {
-                    javaScriptEnabled = false
+                    javaScriptEnabled = true
                     loadWithOverviewMode = true
                     useWideViewPort = true
                     builtInZoomControls = false
                     displayZoomControls = false
                     cacheMode = WebSettings.LOAD_NO_CACHE
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
                 webViewClient = WebViewClient()
                 setBackgroundColor(android.graphics.Color.BLACK)
@@ -57,7 +58,7 @@ fun MjpegWebView(
                 </body>
                 </html>
             """.trimIndent()
-            webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+            webView.loadDataWithBaseURL(streamUrl, html, "text/html", "UTF-8", null)
         },
         modifier = modifier
     )
