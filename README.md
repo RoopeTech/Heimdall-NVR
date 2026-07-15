@@ -37,7 +37,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
     *   **Per-Camera Archiving**: Offload old recordings to a NAS share or secondary local disk automatically. Set a local retention time (e.g. 7 days), after which the background mover daemon securely copies the recording to the archive path. Archived videos play seamlessly in the timeline UI.
     *   **Global Auto-Cleanup**: Configure a global deletion threshold to permanently prune expired recordings and delete their files from the disk (or NAS) to prevent infinite storage growth.
 *   **Encrypted Configuration Backup & Restore**: Download a single JSON backup of your cameras, system settings, and user accounts. Features optional **AES-256 encryption** with a passphrase to securely lock down your plaintext RTSP passwords within the backup file. Restore this backup file on another machine to migrate servers instantly.
-*   **In-App System Updates**: Checks for newer versions against the remote Gitea repository. Admins can pull updates, rebuild the React frontend, and restart the backend server automatically from the Web UI.
+*   **In-App System Updates**: Checks for newer versions against the remote GitHub repository. Admins can pull updates, rebuild the React frontend, and restart the backend server automatically from the Web UI.
 *   **Camera Simulator**: Preconfigured out-of-the-box with a simulated indoor room, bouncing intruder target, and interactive PTZ responses. Test motion logging, timeline playback, and events instantly without connecting a physical camera.
 
 ---
@@ -85,7 +85,11 @@ ip-camera-nvr/
 ## 🛠️ Setup & Installation
 
 ### 1. Clone the Repository
-Before installing, you must clone the repository from Gitea and enter the project folder. 
+Before installing, you must clone the repository from GitHub and enter the project folder. Run this on your machine:
+```bash
+git clone https://github.com/RoopeTech/Heimdall-NVR.git
+cd Heimdall-NVR
+```
 *(All installation and update commands must be run from inside this folder).*
 
 ### 2. Run the Automated Installer
