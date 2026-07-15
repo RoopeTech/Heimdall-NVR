@@ -87,7 +87,7 @@ ip-camera-nvr/
 ### 1. Clone the Repository
 Before installing, you must clone the repository from Gitea and enter the project folder. Run this on your machine:
 ```bash
-git clone http://10.0.1.69:3000/roopetech/RTNVR.git
+git clone http://<YOUR_GIT_SERVER_IP>:3000/roopetech/RTNVR.git
 cd RTNVR
 ```
 *(All installation and update commands must be run from inside this folder).*
@@ -138,5 +138,5 @@ To manage the NVR application, check for updates, or backup settings, navigate t
 ---
 
 ## 🔒 Security Best Practices
-*   **Default Credentials**: Seeding a new database creates a default administrator (`admin` / `admin`). A warning banner will display on the interface until the password is changed. Change this immediately using the profile menu dropdown in the top-right header.
+*   **Default Credentials**: Seeding a new database creates a default administrator account. A warning banner will display on the interface until the password is changed. Change this immediately using the profile menu dropdown in the top-right header.
 *   **Header Authorization**: All media streaming (/live and playback) and API endpoints are protected.

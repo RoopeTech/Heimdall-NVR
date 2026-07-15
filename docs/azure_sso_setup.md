@@ -9,7 +9,7 @@ This guide walks you through setting up Microsoft Azure Active Directory (now En
 4. Configure the application:
    - **Name:** `Heimdall NVR` (or whatever you prefer).
    - **Supported account types:** Select `Accounts in this organizational directory only (Single tenant)` (unless you want external guests to log in).
-   - **Redirect URI:** Select `Web` from the dropdown, and enter your NVR's callback URL. This will be `http://<YOUR_NVR_IP_OR_DOMAIN>/api/auth/sso/callback` (e.g., `http://10.0.1.69:3000/api/auth/sso/callback`).
+   - **Redirect URI:** Select `Web` from the dropdown, and enter your NVR's callback URL. This will be `http://<YOUR_NVR_IP_OR_DOMAIN>/api/auth/sso/callback`.
 5. Click **Register**.
 
 ## Step 2: Gather Your Client ID and Tenant ID
