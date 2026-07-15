@@ -445,7 +445,23 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
         setMockMotionActive(nextState);
       }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to toggle mock motion", e);
+    }
+  };
+
+  const handleManualRecord = async () => {
+    try {
+      const res = await fetch(`/api/cameras/${camera.id}/record`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        console.error("Failed to trigger manual recording");
+      }
+    } catch (e) {
+      console.error("Failed to trigger manual recording", e);
     }
   };
 
@@ -630,6 +646,16 @@ export default function CameraDetail({ camera, onClose, recordings, onRefreshRec
             </div>
           )}
           <PTZControls cameraId={camera.id} isMock={isMock} token={token} />
+
+          <div className="glass-panel" style={{ padding: '16px', marginBottom: '16px' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={handleManualRecord}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              ⏺ Record 15s Clip
+            </button>
+          </div>
 
           {isMock && (
             <div className="glass-panel" style={{ padding: '16px', border: '1px dashed var(--border-glow)' }}>

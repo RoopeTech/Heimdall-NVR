@@ -332,6 +332,7 @@ class CameraThread(threading.Thread):
         self.recording_id = None
         self.record_filepath = None
         self.record_start_time = None
+        self.manual_record_end_time = 0
         
         # Mock Camera flag
         self.is_mock = self.sub_url.startswith("mock://")
@@ -518,6 +519,13 @@ class CameraThread(threading.Thread):
 
                         except Exception as e:
                             print(f"[{self.name}] Error encoding stream frame: {e}")
+                            
+                    # Manual recording timeout
+                    if self.manual_record_end_time > 0 and now_time >= self.manual_record_end_time:
+                        self.manual_record_end_time = 0
+                        if self.is_recording and not self.is_motion_detected and self.record_mode != 'always':
+                            print(f"[{self.name}] Manual recording duration completed.")
+                            self._stop_recording()
                     
                     # Continuous / Hybrid segment splitting
                     if self.record_mode in ['always', 'hybrid']:
@@ -556,6 +564,13 @@ class CameraThread(threading.Thread):
             
         print(f"[{self.name}] Camera thread exiting.")
         self._stop_recording()
+
+    def trigger_manual_record(self, duration=15):
+        self.manual_record_end_time = time.time() + duration
+        if not self.is_recording:
+            print(f"[{self.name}] Manual recording triggered for {duration} seconds.")
+            database.log_event(self.camera_id, "MANUAL_RECORD", f"Manual recording triggered on {self.name}")
+            self._start_recording()
 
     def _update_motion_state(self, motion_detected):
         now = time.time()

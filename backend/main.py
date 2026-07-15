@@ -362,6 +362,22 @@ def restart_camera(camera_id: int, current_user: dict = Depends(get_current_user
     camera_manager.manager.reload_camera(camera_id)
     return {"message": "Camera stream restarted"}
 
+@app.post("/api/cameras/{camera_id}/record")
+def manual_record_camera(camera_id: int, current_user: dict = Depends(get_current_user)):
+    camera = database.get_camera(camera_id)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+        
+    thread = camera_manager.manager.threads.get(camera_id)
+    if not thread:
+        raise HTTPException(status_code=400, detail="Camera stream is not active")
+        
+    if hasattr(thread, "trigger_manual_record"):
+        thread.trigger_manual_record(15)
+        return {"message": "Recording started (15s)"}
+    else:
+        raise HTTPException(status_code=400, detail="This camera type does not support manual recording")
+
 @app.delete("/api/cameras/{camera_id}")
 def delete_camera(camera_id: int, admin: dict = Depends(require_admin)):
     camera = database.get_camera(camera_id)
