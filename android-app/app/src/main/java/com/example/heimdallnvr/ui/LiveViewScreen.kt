@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
 import com.example.heimdallnvr.data.Camera
 import com.example.heimdallnvr.api.NvrApi
 import com.example.heimdallnvr.data.PtzRequest
