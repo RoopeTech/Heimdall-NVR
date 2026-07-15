@@ -8,15 +8,15 @@
   background-color: #0b0f19;
 
   /* Color Palette (HSL) */
-  --bg-main: #0F172A;
-  --bg-card: rgba(30, 41, 59, 0.65);
-  --bg-card-hover: rgba(51, 65, 85, 0.8);
-  --border-glow: rgba(255, 122, 0, 0.2);
-  --border-light: rgba(255, 255, 255, 0.06);
+  --bg-main: #0a0f12;
+  --bg-card: rgba(20, 24, 28, 0.7);
+  --bg-card-hover: rgba(35, 40, 45, 0.85);
+  --border-glow: rgba(251, 191, 36, 0.2);
+  --border-light: rgba(255, 255, 255, 0.08);
   
-  --primary: #FF7A00;
-  --primary-glow: rgba(255, 122, 0, 0.25);
-  --primary-gradient: linear-gradient(135deg, #FF7A00 0%, #FFA550 100%);
+  --primary: #fbbf24;
+  --primary-glow: rgba(251, 191, 36, 0.25);
+  --primary-gradient: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
   
   --accent-motion: #ef4444;
   --accent-motion-glow: rgba(239, 68, 68, 0.35);
@@ -51,7 +51,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   height: 100vh;
-  background: radial-gradient(circle at 50% 0%, #1E293B 0%, #0F172A 70%);
+  background: radial-gradient(circle at 50% 0%, #1a1e24 0%, #0a0f12 70%);
   color: var(--text-primary);
   overflow: hidden;
   display: flex;
@@ -67,7 +67,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Cinzel', serif;
   font-weight: 600;
   letter-spacing: -0.02em;
 }

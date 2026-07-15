@@ -320,7 +320,7 @@ export default function App() {
 
       <header className="app-header">
         <div className="logo-container">
-          <span className="logo-icon">📹</span>
+          <span className="logo-icon">ᚼ</span>
           <span className="logo-text">{appTitle}</span>
         </div>
 
