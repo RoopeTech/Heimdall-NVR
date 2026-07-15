@@ -595,7 +595,7 @@ def check_update(current_user: dict = Depends(get_current_user)):
                 
         remote_version = local_version
         try:
-            remote_version = subprocess.check_output(["git", "show", f"{remote_name}/master:VERSION"], cwd=project_root, text=True, stderr=subprocess.DEVNULL).strip()
+            remote_version = subprocess.check_output(["git", "show", "FETCH_HEAD:VERSION"], cwd=project_root, text=True, stderr=subprocess.DEVNULL).strip()
         except subprocess.CalledProcessError:
             pass
 
@@ -608,13 +608,13 @@ def check_update(current_user: dict = Depends(get_current_user)):
         changelog = ""
         if update_available:
             try:
-                changelog = subprocess.check_output(["git", "show", f"{remote_name}/master:CHANGELOG.md"], cwd=project_root, text=True, stderr=subprocess.DEVNULL)
+                changelog = subprocess.check_output(["git", "show", "FETCH_HEAD:CHANGELOG.md"], cwd=project_root, text=True, stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError:
                 pass
         
         # Keep commit hashes for debugging/dev purposes
         local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=project_root, text=True).strip()
-        remote_commit = subprocess.check_output(["git", "rev-parse", f"{remote_name}/master"], cwd=project_root, text=True).strip()
+        remote_commit = subprocess.check_output(["git", "rev-parse", "FETCH_HEAD"], cwd=project_root, text=True).strip()
         
         return {
             "update_available": update_available,
