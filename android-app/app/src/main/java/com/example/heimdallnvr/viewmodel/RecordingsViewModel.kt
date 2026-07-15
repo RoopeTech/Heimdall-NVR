@@ -8,6 +8,7 @@ import com.example.heimdallnvr.data.Recording
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -42,8 +43,8 @@ class RecordingsViewModel : ViewModel() {
             val dateStr = selectedDate.value.format(fmt)
             val camId = selectedCameraId.value
             try {
-                val rJobs = kotlinx.coroutines.async { api.getRecordings(auth, camId, dateStr) }
-                val eJobs = kotlinx.coroutines.async { api.getEvents(auth, camId, dateStr) }
+                val rJobs = async { api.getRecordings(auth, camId, dateStr) }
+                val eJobs = async { api.getEvents(auth, camId, dateStr) }
                 
                 _recordings.value = rJobs.await()
                 try { _events.value = eJobs.await() } catch (_: Exception) { _events.value = emptyList() }

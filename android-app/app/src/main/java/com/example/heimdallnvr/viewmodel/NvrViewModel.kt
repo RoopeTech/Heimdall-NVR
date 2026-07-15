@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 class NvrViewModel(private val authRepo: AuthRepository) : ViewModel() {
 
@@ -39,8 +40,8 @@ class NvrViewModel(private val authRepo: AuthRepository) : ViewModel() {
                 val api = NvrApi.create(serverUrl)
                 val auth = "Bearer $token"
                 // Load cameras and groups in parallel using async to properly catch exceptions
-                val camerasDeferred = kotlinx.coroutines.async { api.getCameras(auth) }
-                val groupsDeferred  = kotlinx.coroutines.async { api.getGroups(auth) }
+                val camerasDeferred = async { api.getCameras(auth) }
+                val groupsDeferred  = async { api.getGroups(auth) }
                 
                 _cameras.value = camerasDeferred.await()
                 try { _groups.value = groupsDeferred.await() } catch (_: Exception) {}

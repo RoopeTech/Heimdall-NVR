@@ -7,6 +7,7 @@ import com.example.heimdallnvr.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 class SettingsViewModel : ViewModel() {
 
@@ -49,17 +50,17 @@ class SettingsViewModel : ViewModel() {
             val auth = "Bearer $token"
             val api = NvrApi.create(serverUrl)
             try {
-                val s = kotlinx.coroutines.async { api.getSettings(auth) }
-                val c = kotlinx.coroutines.async { api.getCameras(auth) }
-                val g = kotlinx.coroutines.async { api.getGroups(auth) }
+                val s = async { api.getSettings(auth) }
+                val c = async { api.getCameras(auth) }
+                val g = async { api.getGroups(auth) }
                 
                 _settings.value = s.await()
                 _cameras.value = c.await()
                 _groups.value = g.await()
                 
                 if (isAdmin) {
-                    val u = kotlinx.coroutines.async { api.getUsers(auth) }
-                    val t = kotlinx.coroutines.async { api.getApiTokens(auth) }
+                    val u = async { api.getUsers(auth) }
+                    val t = async { api.getApiTokens(auth) }
                     _users.value = u.await()
                     _apiTokens.value = t.await()
                 }
