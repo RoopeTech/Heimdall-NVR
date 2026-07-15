@@ -94,7 +94,7 @@ fun RecordingsScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(DarkSlate)) {
+    Column(modifier = modifier.fillMaxSize().background(DarkSlate)) {
 
         // ── Filter bar ────────────────────────────────────────────────────────
         Surface(color = DarkSlateElevated, tonalElevation = 2.dp) {
