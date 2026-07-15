@@ -118,7 +118,7 @@ fun CameraGridScreen(
                 )
                 else -> LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -157,7 +157,7 @@ fun CameraCard(
                 serverUrl = serverUrl,
                 cameraId = camera.id,
                 apiToken = apiToken,
-                pollIntervalMs = 2000L,
+                pollIntervalMs = 1000L,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )

@@ -145,11 +145,12 @@ data class GroupRequest(
 data class Recording(
     val id: Int = 0,
     @SerialName("camera_id") val cameraId: Int,
-    val filename: String,
+    // Backend stores as 'filepath' in SQLite, not 'filename'
+    @SerialName("filepath") val filename: String,
     @SerialName("start_time") val startTime: String,       // ISO datetime
     @SerialName("end_time") val endTime: String? = null,
     val duration: Double = 0.0,
-    @SerialName("is_archived") val isArchived: Int = 0,
+    @SerialName("is_archived") @Serializable(with = BooleanAsIntSerializer::class) val isArchived: Boolean = false,
     @SerialName("camera_name") val cameraName: String = ""
 )
 

@@ -60,7 +60,7 @@ fun LiveViewScreen(
     }
     DisposableEffect(camera.id) { onDispose { viewModel.stopPolling() } }
 
-    // Auto-hide controls after 3s of inactivity
+    // Auto-hide controls after 4s of inactivity
     LaunchedEffect(controlsVisible) {
         if (controlsVisible) {
             delay(4000)
@@ -73,7 +73,10 @@ fun LiveViewScreen(
             .fillMaxSize()
             .background(Color.Black)
             .pointerInput(Unit) {
-                detectTapGestures { controlsVisible = true }
+                detectTapGestures(
+                    onTap = { controlsVisible = !controlsVisible },
+                    onDoubleTap = { onBack() }
+                )
             }
     ) {
         // ── Video feed (full screen) ──────────────────────────────────────────
