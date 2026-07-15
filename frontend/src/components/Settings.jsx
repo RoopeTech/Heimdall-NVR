@@ -464,6 +464,36 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
     }
   };
 
+  const handleTestNotification = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/settings/test-notification', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          discord_webhook_url: discordWebhookUrl,
+          telegram_bot_token: telegramBotToken,
+          telegram_chat_id: telegramChatId,
+          notification_service: notificationService,
+          notification_media: notificationMedia
+        }),
+      });
+      if (res.ok) {
+        setSuccess('Test notification triggered!');
+      } else {
+        setError('Failed to send test notification.');
+      }
+    } catch (err) {
+      setError('Network error triggering test.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleParseAzureMetadata = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1239,6 +1269,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Settings'}
+              </button>
+              <button type="button" className="btn btn-secondary" disabled={loading} onClick={handleTestNotification}>
+                Test Webhooks
               </button>
             </div>
 

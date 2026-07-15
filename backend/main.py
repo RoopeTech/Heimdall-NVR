@@ -524,6 +524,18 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         
     return {"success": True}
 
+@app.post("/api/settings/test-notification")
+def test_notification(data: dict, admin: dict = Depends(require_admin)):
+    import notifications
+    notifications.send_test_notification(
+        discord_webhook=data.get("discord_webhook_url"),
+        telegram_token=data.get("telegram_bot_token"),
+        telegram_chat=data.get("telegram_chat_id"),
+        notif_service=data.get("notification_service", "both"),
+        notif_media=data.get("notification_media", "both")
+    )
+    return {"success": True}
+
 from pydantic import BaseModel
 class BackupRequest(BaseModel):
     password: str = None

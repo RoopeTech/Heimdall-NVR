@@ -15,6 +15,32 @@ def send_motion_notification_async(camera_name, video_path, snapshot_bytes):
     )
     thread.start()
 
+def send_test_notification(discord_webhook, telegram_token, telegram_chat, notif_service, notif_media):
+    message = "✅ Heimdall NVR: Test Notification Successful!"
+    
+    # We won't send an actual video, just a dummy image so they can verify media uploads if enabled
+    dummy_image = None
+    if notif_media in ["picture", "both"]:
+        try:
+            import cv2
+            import numpy as np
+            img = np.zeros((360, 640, 3), dtype=np.uint8)
+            img[:] = (20, 15, 10)
+            cv2.putText(img, "TEST NOTIFICATION", (160, 190), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+            _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            dummy_image = buf.tobytes()
+        except:
+            pass
+
+    def _run_test():
+        if discord_webhook and notif_service in ["discord", "both"]:
+            _send_discord(discord_webhook, message, None, dummy_image, 0)
+            
+        if telegram_token and telegram_chat and notif_service in ["telegram", "both"]:
+            _send_telegram(telegram_token, telegram_chat, message, None, dummy_image, 0)
+            
+    threading.Thread(target=_run_test, daemon=True).start()
+
 def _process_notifications(camera_name, video_path, snapshot_bytes):
     discord_webhook = database.get_system_setting("discord_webhook_url")
     telegram_token = database.get_system_setting("telegram_bot_token")
