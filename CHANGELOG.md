@@ -2,6 +2,14 @@
 
 All notable changes to the NVR project will be documented in this file.
 
+## [1.3.0] - 2026-07-14
+
+### Added
+- **Motion Webhooks**: Integrated Discord and Telegram webhook support to receive instant notifications when motion is detected.
+- **Webhook Customization**: Users can selectively route alerts to Discord, Telegram, or both.
+- **Media Options**: Notifications can be customized to attach a picture, a short video clip, or both for motion events.
+- **Test Webhooks**: Added a quick "Test Webhooks" button in Settings to instantly verify notification configurations.
+
 ## [1.2.0] - 2026-07-01
 
 ### Added
