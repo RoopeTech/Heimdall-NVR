@@ -43,11 +43,8 @@ class RecordingsViewModel : ViewModel() {
             val dateStr = selectedDate.value.format(fmt)
             val camId = selectedCameraId.value
             try {
-                val rJobs = async { api.getRecordings(auth, camId, dateStr) }
-                val eJobs = async { api.getEvents(auth, camId, dateStr) }
-                
-                _recordings.value = rJobs.await()
-                try { _events.value = eJobs.await() } catch (_: Exception) { _events.value = emptyList() }
+                _recordings.value = api.getRecordings(auth, camId, dateStr)
+                try { _events.value = api.getEvents(auth, camId, dateStr) } catch (_: Exception) { _events.value = emptyList() }
             } catch (e: Exception) {
                 _error.value = "Failed to load recordings: ${e.message}"
             } finally {
