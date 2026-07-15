@@ -10,14 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import com.example.heimdallnvr.api.sharedOkHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
-
-val okHttpClient = OkHttpClient()
+import kotlin.math.min
 
 @Composable
 fun LiveCameraFeed(
@@ -25,23 +24,26 @@ fun LiveCameraFeed(
     cameraId: Int,
     apiToken: String,
     pollIntervalMs: Long = 500L,
+    highQuality: Boolean = false,
     contentScale: ContentScale = ContentScale.Fit,
     modifier: Modifier = Modifier
 ) {
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var hasError by remember { mutableStateOf(false) }
 
-    LaunchedEffect(serverUrl, cameraId, apiToken, pollIntervalMs) {
-        val snapshotUrl = "$serverUrl/api/cameras/$cameraId/snapshot"
+    LaunchedEffect(serverUrl, cameraId, apiToken, pollIntervalMs, highQuality) {
+        val profile = if (highQuality) "hd" else "sd"
+        val snapshotUrl = "$serverUrl/api/cameras/$cameraId/snapshot?profile=$profile"
         withContext(Dispatchers.IO) {
+            var consecutiveErrors = 0
             while (isActive) {
+                val startMs = System.currentTimeMillis()
                 try {
                     val request = Request.Builder()
                         .url(snapshotUrl)
                         .addHeader("Authorization", "Bearer $apiToken")
                         .build()
-
-                    val response = okHttpClient.newCall(request).execute()
+                    val response = sharedOkHttpClient.newCall(request).execute()
                     if (response.isSuccessful) {
                         val bytes = response.body?.bytes()
                         if (bytes != null) {
@@ -51,21 +53,27 @@ fun LiveCameraFeed(
                                 withContext(Dispatchers.Main) {
                                     bitmap = imageBitmap
                                     hasError = false
+                                    consecutiveErrors = 0
                                 }
                             }
                         }
                     } else {
-                        withContext(Dispatchers.Main) {
-                            hasError = true
-                        }
+                        consecutiveErrors++
+                        withContext(Dispatchers.Main) { hasError = consecutiveErrors >= 3 }
                     }
                     response.close()
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        hasError = true
-                    }
+                    consecutiveErrors++
+                    withContext(Dispatchers.Main) { hasError = consecutiveErrors >= 3 }
                 }
-                delay(pollIntervalMs)
+                // Subtract elapsed time so we target the intended interval;
+                // back off exponentially on repeated errors (up to 8x interval)
+                val elapsed = System.currentTimeMillis() - startMs
+                val backoff = if (consecutiveErrors > 0)
+                    min(pollIntervalMs * (1L shl min(consecutiveErrors, 3)), pollIntervalMs * 8)
+                else pollIntervalMs
+                val remaining = backoff - elapsed
+                if (remaining > 0) delay(remaining)
             }
         }
     }
@@ -79,9 +87,9 @@ fun LiveCameraFeed(
                 modifier = Modifier.matchParentSize()
             )
         } else if (hasError) {
-            Text("Connection Error", modifier = Modifier.align(Alignment.Center))
+            Text("Offline", modifier = Modifier.align(Alignment.Center))
         } else {
-            Text("Loading...", modifier = Modifier.align(Alignment.Center))
+            Text("Connecting…", modifier = Modifier.align(Alignment.Center))
         }
     }
 }

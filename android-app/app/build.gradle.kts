@@ -9,10 +9,10 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "com.example.heimdallnvr"
-        minSdk = 24
+        minSdk = 26  // Required by java.time.LocalDate used in RecordingsViewModel / RecordingsScreen
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 3
+        versionName = "3.0"
     }
 
     buildTypes {
@@ -24,6 +24,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true  // Enables java.time on minSdk < 26 (safety net)
     }
     buildFeatures {
       compose = true
@@ -78,18 +79,23 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
-  // Navigation
+  // Navigation Compose (Navigation3 removed — dead code)
   implementation("androidx.navigation:navigation-compose:2.7.7")
-  implementation(libs.androidx.navigation3.ui)
-  implementation(libs.androidx.navigation3.runtime)
-  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-  
+
   // Networking & Preferences
   implementation(libs.retrofit)
   implementation(libs.okhttp)
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.retrofit.kotlinx.serialization)
   implementation(libs.androidx.datastore.preferences)
-  implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
-  implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-rc01")
+
+  // Media3 / ExoPlayer for recording playback
+  implementation("androidx.media3:media3-exoplayer:1.3.1")
+  implementation("androidx.media3:media3-ui:1.3.1")
+  implementation("androidx.media3:media3-datasource-okhttp:1.3.1")
+
+  // Desugaring (java.time backport for minSdk < 26 safety net)
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+  // Coil3 removed — raw OkHttp used directly for snapshot polling
 }
