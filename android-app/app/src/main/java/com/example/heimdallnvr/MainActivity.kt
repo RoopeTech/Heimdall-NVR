@@ -74,6 +74,8 @@ class MainActivity : ComponentActivity() {
                             val token = apiToken ?: return@composable
                             
                             val cameras by viewModel.cameras.collectAsState()
+                            val isLoading by viewModel.isLoading.collectAsState()
+                            val error by viewModel.error.collectAsState()
                             
                             androidx.compose.runtime.LaunchedEffect(Unit) {
                                 viewModel.loadCameras(url, token)
@@ -83,6 +85,8 @@ class MainActivity : ComponentActivity() {
                                 cameras = cameras,
                                 serverUrl = url,
                                 apiToken = token,
+                                error = error,
+                                isLoading = isLoading,
                                 onCameraClick = { camera ->
                                     selectedCamera = camera
                                     navController.navigate("live")

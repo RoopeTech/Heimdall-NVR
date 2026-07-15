@@ -19,6 +19,8 @@ fun CameraGridScreen(
     cameras: List<Camera>,
     serverUrl: String,
     apiToken: String,
+    error: String?,
+    isLoading: Boolean,
     onCameraClick: (Camera) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -34,21 +36,35 @@ fun CameraGridScreen(
             )
         }
     ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(1),
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(cameras) { camera ->
-                CameraCard(
-                    camera = camera,
-                    serverUrl = serverUrl,
-                    apiToken = apiToken,
-                    onClick = { onCameraClick(camera) }
-                )
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (error != null) {
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Text(text = error, color = MaterialTheme.colorScheme.error)
+            }
+        } else if (cameras.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Text("No cameras found")
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(1),
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(cameras) { camera ->
+                    CameraCard(
+                        camera = camera,
+                        serverUrl = serverUrl,
+                        apiToken = apiToken,
+                        onClick = { onCameraClick(camera) }
+                    )
+                }
             }
         }
     }
