@@ -7,6 +7,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import com.example.heimdallnvr.data.Camera
 import com.example.heimdallnvr.api.NvrApi
 import com.example.heimdallnvr.data.PtzRequest
@@ -47,10 +51,17 @@ fun LiveViewScreen(
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
             ) {
-                // In a production app, we would use WebRTC here.
-                // For this V1, we use a snapshot polling or MJPEG fallback via Coil.
                 val snapshotUrl = "$serverUrl/api/cameras/${camera.id}/snapshot"
-                Text("Live View Stream", modifier = Modifier.align(Alignment.Center))
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(snapshotUrl)
+                        .addHeader("Authorization", "Bearer $apiToken")
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = camera.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

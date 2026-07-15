@@ -11,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import androidx.compose.ui.platform.LocalContext
 import com.example.heimdallnvr.data.Camera
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,13 +88,26 @@ fun CameraCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             val snapshotUrl = "$serverUrl/api/cameras/${camera.id}/snapshot"
-            // For production, we'd add the Authorization header to Coil's request
-            
-            Text(
-                text = camera.name,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(16.dp)
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(snapshotUrl)
+                    .addHeader("Authorization", "Bearer $apiToken")
+                    .crossfade(true)
+                    .build(),
+                contentDescription = camera.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
+            
+            Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Text(
+                    text = camera.name,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier
+                        .align(androidx.compose.ui.Alignment.BottomStart)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
