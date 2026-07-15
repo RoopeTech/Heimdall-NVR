@@ -8,15 +8,15 @@
   background-color: #0b0f19;
 
   /* Color Palette (HSL) */
-  --bg-main: #060913;
-  --bg-card: rgba(15, 23, 42, 0.65);
-  --bg-card-hover: rgba(30, 41, 59, 0.8);
-  --border-glow: rgba(56, 189, 248, 0.2);
+  --bg-main: #0F172A;
+  --bg-card: rgba(30, 41, 59, 0.65);
+  --bg-card-hover: rgba(51, 65, 85, 0.8);
+  --border-glow: rgba(255, 122, 0, 0.2);
   --border-light: rgba(255, 255, 255, 0.06);
   
-  --primary: #0ea5e9;
-  --primary-glow: rgba(14, 165, 233, 0.25);
-  --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  --primary: #FF7A00;
+  --primary-glow: rgba(255, 122, 0, 0.25);
+  --primary-gradient: linear-gradient(135deg, #FF7A00 0%, #FFA550 100%);
   
   --accent-motion: #ef4444;
   --accent-motion-glow: rgba(239, 68, 68, 0.35);
@@ -51,7 +51,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   height: 100vh;
-  background: radial-gradient(circle at 50% 0%, #111a30 0%, #060913 70%);
+  background: radial-gradient(circle at 50% 0%, #1E293B 0%, #0F172A 70%);
   color: var(--text-primary);
   overflow: hidden;
   display: flex;
@@ -79,7 +79,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(30, 41, 59, 0.3);
   border-radius: 4px;
 }
 
@@ -111,7 +111,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Dynamic Accent Glows */
 .glow-blue {
   box-shadow: 0 0 25px var(--primary-glow);
-  border-color: rgba(14, 165, 233, 0.4);
+  border-color: rgba(255, 122, 0, 0.4);
 }
 
 .glow-red {
@@ -153,12 +153,12 @@ h1, h2, h3, h4, h5, h6 {
 .btn-primary {
   background: var(--primary-gradient);
   color: white;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.5);
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.5);
 }
 
 .btn-primary:active {
@@ -211,7 +211,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-input {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(30, 41, 59, 0.6);
   border: 1px solid var(--border-light);
   border-radius: 8px;
   color: var(--text-primary);
