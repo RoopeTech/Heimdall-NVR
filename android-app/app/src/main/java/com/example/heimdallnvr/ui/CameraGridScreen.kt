@@ -52,7 +52,7 @@ fun CameraGridScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(DarkSlate)) {
+    Column(modifier = modifier.fillMaxSize().background(DarkSlate)) {
 
         // Group filter chips
         if (groups.isNotEmpty()) {
