@@ -786,6 +786,7 @@ def create_api_token(user_id, token_name, token):
     )
     conn.commit()
     conn.close()
+    return True
 
 def get_api_tokens(user_id):
     conn = get_db_connection()
@@ -799,8 +800,10 @@ def delete_api_token(token, user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM api_tokens WHERE token = ? AND user_id = ?", (token, user_id))
+    rows_affected = cursor.rowcount
     conn.commit()
     conn.close()
+    return rows_affected > 0
 
 # ---------------------------------------------------------
 # Session Management
