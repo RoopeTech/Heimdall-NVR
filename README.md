@@ -6,7 +6,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
 
 ## 🚀 Key Features
 
-*   **Cyberpunk Glassmorphic Design**: A premium responsive dashboard styled with curated dark cyberpunk colors (`#060913` and `#0b0f19`) and dynamic layouts.
+*   **Norse/Valhalla Theme**: A premium responsive dashboard styled with curated moody fjord backgrounds (`#0a0f12`), amber/gold accents (`#fbbf24`), and runic fonts for an epic aesthetic.
 *   **Lightweight Server/Client Architecture**: Runs as a headless Python (FastAPI/uvicorn) backend server. Any browser on your network — PC, phone, or tablet — can connect to the dashboard and view live feeds, recordings, and manage settings.
 *   **Zero-CPU Recording**: Leverages background `ffmpeg` with `-c copy` to record high-resolution camera streams. Instead of transcoding (which exhausts CPU), it copies raw H.264 streams directly into an MP4 container, maintaining native quality with near **0% CPU usage**.
 *   **Flexible NVR Recording Modes**:
@@ -32,6 +32,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
     *   **Viewer**: Read-only access to live streams, events logs, timeline playbacks, and PTZ controls (cannot modify settings).
 *   **User Accounts Manager**: Admins can add, update passwords, toggle roles, and delete user accounts. Secure password hashing uses PBKDF2-HMAC-SHA256 with 100,000 iterations and random salts.
 *   **Progressive Web App (PWA)**: Fully installable PWA for Android/iOS Chrome and desktop browsers. Features customized security camera launcher icons, custom manifest files, and a service worker configured with pass-through bypasses for live feeds and playback segments to prevent browser cache exhaustion.
+*   **Native Android App**: A dedicated Android application wrapper (located in `android-app/`) providing a fast, full-screen, native experience for accessing your Heimdall NVR on the go.
 *   **NAS Archiving & Storage Management**: 
     *   **Per-Camera Archiving**: Offload old recordings to a NAS share or secondary local disk automatically. Set a local retention time (e.g. 7 days), after which the background mover daemon securely copies the recording to the archive path. Archived videos play seamlessly in the timeline UI.
     *   **Global Auto-Cleanup**: Configure a global deletion threshold to permanently prune expired recordings and delete their files from the disk (or NAS) to prevent infinite storage growth.
@@ -45,6 +46,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
 
 ```text
 ip-camera-nvr/
+├── android-app/             # Native Android application wrapper
 ├── backend/
 │   ├── main.py              # FastAPI server (API, REST routes, static file server)
 │   ├── database.py          # SQLite schema, migrations, user CRUD, config export/import
@@ -52,14 +54,14 @@ ip-camera-nvr/
 │   ├── ptz.py               # SOAP/CGI commands for ONVIF, CamHi, and Foscam PTZ actions
 │   └── requirements.txt     # Python requirements
 ├── frontend/
-│   ├── index.html           # Main template with PWA links and Google fonts (Inter/Outfit)
+│   ├── index.html           # Main template with PWA links and Google fonts (Inter/Cinzel)
 │   ├── vite.config.js       # Vite proxy and build configuration
 │   ├── package.json         # React UI dependencies
 │   ├── public/
 │   │   ├── manifest.json    # PWA configuration
 │   │   ├── sw.js            # Caching service worker with stream pass-through bypasses
-│   │   ├── icon-192.png     # Cyberpunk home screen app icon (192x192)
-│   │   └── icon-512.png     # Cyberpunk home screen app icon (512x512)
+│   │   ├── icon-192.png     # Norse home screen app icon (192x192)
+│   │   └── icon-512.png     # Norse home screen app icon (512x512)
 │   └── src/
 │       ├── main.jsx         # React PWA register and bootstrap
 │       ├── App.jsx          # Main shell, tab router, profile change password modal
