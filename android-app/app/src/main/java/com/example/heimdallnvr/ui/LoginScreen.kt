@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.heimdallnvr.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,7 +74,7 @@ fun LoginScreen(
                     text = "HEIMDALL",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 4.dp
+                        letterSpacing = 4.sp
                     ),
                     color = NeonOrange,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -81,7 +82,7 @@ fun LoginScreen(
                 Text(
                     text = "NVR SYSTEM",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        letterSpacing = 8.dp
+                        letterSpacing = 8.sp
                     ),
                     color = OnDarkSlate.copy(alpha = 0.7f),
                     modifier = Modifier.padding(bottom = 48.dp)
@@ -96,9 +97,11 @@ fun LoginScreen(
                         Icon(Icons.Default.Settings, contentDescription = "Server")
                     },
                     shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = NeonOrange,
-                        unfocusedBorderColor = OnDarkSlate.copy(alpha = 0.3f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = NeonOrange,
+                        unfocusedIndicatorColor = OnDarkSlate.copy(alpha = 0.3f),
                         cursorColor = NeonOrange
                     ),
                     modifier = Modifier
@@ -116,9 +119,11 @@ fun LoginScreen(
                     },
                     visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        focusedBorderColor = NeonOrange,
-                        unfocusedBorderColor = OnDarkSlate.copy(alpha = 0.3f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = NeonOrange,
+                        unfocusedIndicatorColor = OnDarkSlate.copy(alpha = 0.3f),
                         cursorColor = NeonOrange
                     ),
                     modifier = Modifier
@@ -142,7 +147,7 @@ fun LoginScreen(
                     Text(
                         text = "CONNECT",
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.dp
+                        letterSpacing = 2.sp
                     )
                 }
             }
