@@ -99,8 +99,15 @@ class MainActivity : ComponentActivity() {
 
                         // ── Main with bottom nav ──────────────────────────────
                         composable("grid") {
-                            val url = serverUrl ?: return@composable
-                            val token = sessionToken ?: return@composable
+                            val url = serverUrl
+                            val token = sessionToken
+                            
+                            if (url == null || token == null) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = NeonOrange)
+                                }
+                                return@composable
+                            }
 
                             val cameras by nvrViewModel.cameras.collectAsState()
                             val groups by nvrViewModel.groups.collectAsState()
@@ -140,14 +147,16 @@ class MainActivity : ComponentActivity() {
 
                         // ── Live View ─────────────────────────────────────────
                         composable("live") {
-                            val camera = selectedCamera ?: run {
-                                navController.popBackStack(); return@composable
-                            }
-                            val url = serverUrl ?: run {
-                                navController.popBackStack(); return@composable
-                            }
-                            val token = sessionToken ?: run {
-                                navController.popBackStack(); return@composable
+                            val camera = selectedCamera
+                            val url = serverUrl
+                            val token = sessionToken
+                            
+                            if (camera == null || url == null || token == null) {
+                                LaunchedEffect(Unit) {
+                                    navController.popBackStack()
+                                }
+                                Box(modifier = Modifier.fillMaxSize())
+                                return@composable
                             }
                             LiveViewScreen(
                                 camera = camera,
@@ -159,8 +168,15 @@ class MainActivity : ComponentActivity() {
 
                         // ── Recordings ────────────────────────────────────────
                         composable("recordings") {
-                            val url = serverUrl ?: return@composable
-                            val token = sessionToken ?: return@composable
+                            val url = serverUrl
+                            val token = sessionToken
+                            
+                            if (url == null || token == null) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = NeonOrange)
+                                }
+                                return@composable
+                            }
                             val cameras by nvrViewModel.cameras.collectAsState()
 
                             MainScaffold(
@@ -184,8 +200,15 @@ class MainActivity : ComponentActivity() {
 
                         // ── Settings ──────────────────────────────────────────
                         composable("settings") {
-                            val url = serverUrl ?: return@composable
-                            val token = sessionToken ?: return@composable
+                            val url = serverUrl
+                            val token = sessionToken
+                            
+                            if (url == null || token == null) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = NeonOrange)
+                                }
+                                return@composable
+                            }
 
                             MainScaffold(
                                 navController = navController,

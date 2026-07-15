@@ -7,7 +7,7 @@ import com.example.heimdallnvr.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
+
 
 class SettingsViewModel : ViewModel() {
 
