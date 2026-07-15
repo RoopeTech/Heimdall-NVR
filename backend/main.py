@@ -511,7 +511,8 @@ def get_system_settings(current_user: dict = Depends(get_current_user)):
         "telegram_bot_token": database.get_system_setting("telegram_bot_token") or "",
         "telegram_chat_id": database.get_system_setting("telegram_chat_id") or "",
         "notification_service": database.get_system_setting("notification_service") or "both",
-        "notification_media": database.get_system_setting("notification_media") or "both"
+        "notification_media": database.get_system_setting("notification_media") or "both",
+        "git_remote_name": database.get_system_setting("git_remote_name") or "origin"
     }
 
 @app.post("/api/settings")
@@ -537,6 +538,8 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         database.set_system_setting("notification_service", data["notification_service"])
     if "notification_media" in data:
         database.set_system_setting("notification_media", data["notification_media"])
+    if "git_remote_name" in data:
+        database.set_system_setting("git_remote_name", data["git_remote_name"])
         
     return {"success": True}
 
@@ -580,8 +583,9 @@ def check_update(current_user: dict = Depends(get_current_user)):
     import re
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
-        # Run git fetch origin to update remote references
-        subprocess.run(["git", "fetch", "origin"], cwd=project_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+        remote_name = database.get_system_setting("git_remote_name") or "origin"
+        # Run git fetch to update remote references
+        subprocess.run(["git", "fetch", remote_name], cwd=project_root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
         
         local_version = "0.0.0"
         version_path = os.path.join(project_root, "VERSION")
@@ -591,7 +595,7 @@ def check_update(current_user: dict = Depends(get_current_user)):
                 
         remote_version = local_version
         try:
-            remote_version = subprocess.check_output(["git", "show", "origin/master:VERSION"], cwd=project_root, text=True, stderr=subprocess.DEVNULL).strip()
+            remote_version = subprocess.check_output(["git", "show", f"{remote_name}/master:VERSION"], cwd=project_root, text=True, stderr=subprocess.DEVNULL).strip()
         except subprocess.CalledProcessError:
             pass
 
@@ -604,13 +608,13 @@ def check_update(current_user: dict = Depends(get_current_user)):
         changelog = ""
         if update_available:
             try:
-                changelog = subprocess.check_output(["git", "show", "origin/master:CHANGELOG.md"], cwd=project_root, text=True, stderr=subprocess.DEVNULL)
+                changelog = subprocess.check_output(["git", "show", f"{remote_name}/master:CHANGELOG.md"], cwd=project_root, text=True, stderr=subprocess.DEVNULL)
             except subprocess.CalledProcessError:
                 pass
         
         # Keep commit hashes for debugging/dev purposes
         local_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=project_root, text=True).strip()
-        remote_commit = subprocess.check_output(["git", "rev-parse", "origin/master"], cwd=project_root, text=True).strip()
+        remote_commit = subprocess.check_output(["git", "rev-parse", f"{remote_name}/master"], cwd=project_root, text=True).strip()
         
         return {
             "update_available": update_available,
@@ -635,8 +639,9 @@ def apply_update(admin: dict = Depends(require_admin)):
     import time
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
+        remote_name = database.get_system_setting("git_remote_name") or "origin"
         # 1. Pull latest code from remote master branch
-        pull_res = subprocess.run(["git", "pull", "origin", "master"], cwd=project_root, capture_output=True, text=True, timeout=20)
+        pull_res = subprocess.run(["git", "pull", remote_name, "master"], cwd=project_root, capture_output=True, text=True, timeout=20)
         if pull_res.returncode != 0:
             raise HTTPException(status_code=500, detail=f"Git pull failed: {pull_res.stderr}")
             

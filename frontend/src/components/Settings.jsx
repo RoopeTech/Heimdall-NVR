@@ -11,6 +11,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [telegramChatId, setTelegramChatId] = useState('');
   const [notificationService, setNotificationService] = useState('both');
   const [notificationMedia, setNotificationMedia] = useState('both');
+  const [gitRemoteName, setGitRemoteName] = useState('origin');
 
   // SSO Settings State
   const [ssoEnabled, setSsoEnabled] = useState('0');
@@ -404,6 +405,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           setTelegramChatId(data.telegram_chat_id || '');
           setNotificationService(data.notification_service || 'both');
           setNotificationMedia(data.notification_media || 'both');
+          setGitRemoteName(data.git_remote_name || 'origin');
           setSsoEnabled(data.sso_enabled || '0');
           setSsoClientId(data.sso_client_id || '');
           setSsoClientSecret(data.sso_client_secret || '');
@@ -509,7 +511,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           telegram_bot_token: telegramBotToken,
           telegram_chat_id: telegramChatId,
           notification_service: notificationService,
-          notification_media: notificationMedia
+          notification_media: notificationMedia,
+          git_remote_name: gitRemoteName
         }),
       });
       if (res.ok) {
@@ -1349,6 +1352,22 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
             <div style={{ height: '1px', background: 'var(--border-light)', margin: '30px 0' }} />
 
             <h3 style={{ fontSize: '18px', marginBottom: '12px', color: 'var(--primary)' }}>System Updates</h3>
+            
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label className="form-label">Git Remote Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={gitRemoteName}
+                onChange={(e) => setGitRemoteName(e.target.value)}
+                placeholder="e.g. origin, github, gitea"
+                style={{ maxWidth: '300px' }}
+              />
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                The name of the git remote to fetch updates from. Remember to save settings before checking for updates.
+              </div>
+            </div>
+
             {checkingUpdate ? (
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Checking for updates...</p>
             ) : updateStatus ? (
