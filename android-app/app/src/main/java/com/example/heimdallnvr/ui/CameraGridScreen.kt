@@ -10,15 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.request.CachePolicy
-import coil3.network.NetworkHeaders
-import coil3.network.httpHeaders
-import androidx.compose.ui.platform.LocalContext
 import com.example.heimdallnvr.data.Camera
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,27 +82,20 @@ fun CameraCard(
             .height(200.dp)
             .clickable { onClick() }
     ) {
-        var timestamp by remember { mutableStateOf(System.currentTimeMillis()) }
-        
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(2000) // Poll every 2 seconds in grid
-                timestamp = System.currentTimeMillis()
-            }
-        }
-
         Box(modifier = Modifier.fillMaxSize()) {
-            val snapshotUrl = "$serverUrl/api/cameras/${camera.id}/snapshot?t=$timestamp"
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(snapshotUrl)
-                    .httpHeaders(NetworkHeaders.Builder().set("Authorization", "Bearer $apiToken").build())
-                    .memoryCachePolicy(CachePolicy.DISABLED)
-                    .diskCachePolicy(CachePolicy.DISABLED)
-                    .build(),
-                contentDescription = camera.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+            val liveUrl = "$serverUrl/api/cameras/${camera.id}/live?token=$apiToken"
+            
+            MjpegWebView(
+                streamUrl = liveUrl,
+                modifier = Modifier.fillMaxSize(),
+                contentFit = "cover"
+            )
+            
+            // Transparent overlay to intercept clicks from WebView
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { onClick() }
             )
             
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
