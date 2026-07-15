@@ -19,17 +19,25 @@ def _process_notifications(camera_name, video_path, snapshot_bytes):
     discord_webhook = database.get_system_setting("discord_webhook_url")
     telegram_token = database.get_system_setting("telegram_bot_token")
     telegram_chat = database.get_system_setting("telegram_chat_id")
+    notif_service = database.get_system_setting("notification_service") or "both"
+    notif_media = database.get_system_setting("notification_media") or "both"
     
+    # Filter media based on user preference
+    if notif_media == "picture":
+        video_path = None
+    elif notif_media == "video":
+        snapshot_bytes = None
+        
     file_size_mb = 0
     if video_path and os.path.exists(video_path):
         file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
         
     message = f"🚨 **Motion Detected** on camera **{camera_name}**!"
     
-    if discord_webhook:
+    if discord_webhook and notif_service in ["discord", "both"]:
         _send_discord(discord_webhook, message, video_path, snapshot_bytes, file_size_mb)
         
-    if telegram_token and telegram_chat:
+    if telegram_token and telegram_chat and notif_service in ["telegram", "both"]:
         _send_telegram(telegram_token, telegram_chat, message, video_path, snapshot_bytes, file_size_mb)
 
 def _send_discord(webhook_url, message, video_path, snapshot_bytes, file_size_mb):

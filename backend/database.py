@@ -261,7 +261,9 @@ def init_db():
         ('sso_profile_url', ''),
         ('discord_webhook_url', ''),
         ('telegram_bot_token', ''),
-        ('telegram_chat_id', '')
+        ('telegram_chat_id', ''),
+        ('notification_service', 'both'),
+        ('notification_media', 'both')
     ]
     for k, v in default_settings:
         cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = ?", (k,))

@@ -493,7 +493,9 @@ def get_system_settings(current_user: dict = Depends(get_current_user)):
         "use_webrtc": database.get_system_setting("use_webrtc") or "1",
         "discord_webhook_url": database.get_system_setting("discord_webhook_url") or "",
         "telegram_bot_token": database.get_system_setting("telegram_bot_token") or "",
-        "telegram_chat_id": database.get_system_setting("telegram_chat_id") or ""
+        "telegram_chat_id": database.get_system_setting("telegram_chat_id") or "",
+        "notification_service": database.get_system_setting("notification_service") or "both",
+        "notification_media": database.get_system_setting("notification_media") or "both"
     }
 
 @app.post("/api/settings")
@@ -515,6 +517,10 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         database.set_system_setting("telegram_bot_token", data["telegram_bot_token"])
     if "telegram_chat_id" in data:
         database.set_system_setting("telegram_chat_id", data["telegram_chat_id"])
+    if "notification_service" in data:
+        database.set_system_setting("notification_service", data["notification_service"])
+    if "notification_media" in data:
+        database.set_system_setting("notification_media", data["notification_media"])
         
     return {"success": True}
 

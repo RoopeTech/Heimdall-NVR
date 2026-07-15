@@ -9,6 +9,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
+  const [notificationService, setNotificationService] = useState('both');
+  const [notificationMedia, setNotificationMedia] = useState('both');
 
   // SSO Settings State
   const [ssoEnabled, setSsoEnabled] = useState('0');
@@ -337,6 +339,8 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           setDiscordWebhookUrl(data.discord_webhook_url || '');
           setTelegramBotToken(data.telegram_bot_token || '');
           setTelegramChatId(data.telegram_chat_id || '');
+          setNotificationService(data.notification_service || 'both');
+          setNotificationMedia(data.notification_media || 'both');
           setSsoEnabled(data.sso_enabled || '0');
           setSsoClientId(data.sso_client_id || '');
           setSsoClientSecret(data.sso_client_secret || '');
@@ -440,7 +444,9 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           use_webrtc: useWebrtcInput ? '1' : '0',
           discord_webhook_url: discordWebhookUrl,
           telegram_bot_token: telegramBotToken,
-          telegram_chat_id: telegramChatId
+          telegram_chat_id: telegramChatId,
+          notification_service: notificationService,
+          notification_media: notificationMedia
         }),
       });
       if (res.ok) {
@@ -1202,6 +1208,32 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 onChange={(e) => setTelegramChatId(e.target.value)} 
                 placeholder="-1001234567890"
               />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Notification Service</label>
+              <select 
+                className="form-input"
+                value={notificationService}
+                onChange={(e) => setNotificationService(e.target.value)}
+              >
+                <option value="both">Both (Discord & Telegram)</option>
+                <option value="discord">Discord Only</option>
+                <option value="telegram">Telegram Only</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Notification Media</label>
+              <select 
+                className="form-input"
+                value={notificationMedia}
+                onChange={(e) => setNotificationMedia(e.target.value)}
+              >
+                <option value="both">Picture & Video Clip</option>
+                <option value="picture">Picture Only</option>
+                <option value="video">Video Clip Only</option>
+              </select>
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
