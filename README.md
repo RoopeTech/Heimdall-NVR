@@ -37,7 +37,7 @@ A lightweight, high-performance, and feature-rich **Network Video Recorder (NVR)
     *   **Per-Camera Archiving**: Offload old recordings to a NAS share or secondary local disk automatically. Set a local retention time (e.g. 7 days), after which the background mover daemon securely copies the recording to the archive path. Archived videos play seamlessly in the timeline UI.
     *   **Global Auto-Cleanup**: Configure a global deletion threshold to permanently prune expired recordings and delete their files from the disk (or NAS) to prevent infinite storage growth.
 *   **Encrypted Configuration Backup & Restore**: Download a single JSON backup of your cameras, system settings, and user accounts. Features optional **AES-256 encryption** with a passphrase to securely lock down your plaintext RTSP passwords within the backup file. Restore this backup file on another machine to migrate servers instantly.
-*   **In-App System Updates**: Checks for newer versions against the remote GitHub repository. Admins can pull updates, rebuild the React frontend, and restart the backend server automatically from the Web UI.
+*   **In-App System Updates**: Automatically pulls updates from a dynamically configurable Git remote (defaults to GitHub). Admins can customize the remote to self-host their own codebase (e.g. on Gitea) and easily rebuild the React frontend and restart the backend server automatically from the Web UI.
 *   **Camera Simulator**: Preconfigured out-of-the-box with a simulated indoor room, bouncing intruder target, and interactive PTZ responses. Test motion logging, timeline playback, and events instantly without connecting a physical camera.
 
 ---

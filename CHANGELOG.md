@@ -9,6 +9,7 @@ All notable changes to the NVR project will be documented in this file.
 - **Webhook Customization**: Users can selectively route alerts to Discord, Telegram, or both.
 - **Media Options**: Notifications can be customized to attach a picture, a short video clip, or both for motion events.
 - **Test Webhooks**: Added a quick "Test Webhooks" button in Settings to instantly verify notification configurations.
+- **Configurable Updater Remote**: Added a setting in the System Updates UI to customize the Git remote name or raw Git URL the updater pulls from, allowing seamless self-hosted updates.
 
 ## [1.2.0] - 2026-07-01
 
