@@ -874,6 +874,32 @@ def delete_user_route(user_id: int, admin: dict = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True}
 
+# API Token APIs
+@app.get("/api/tokens")
+def list_api_tokens(current_user: dict = Depends(require_admin)):
+    return database.get_api_tokens(current_user["id"])
+
+@app.post("/api/tokens")
+def generate_api_token(data: dict, current_user: dict = Depends(require_admin)):
+    name = data.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Token name required")
+    
+    import secrets
+    raw_token = secrets.token_hex(32)
+    success = database.create_api_token(current_user["id"], name, raw_token)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to create token")
+        
+    return {"token": raw_token}
+
+@app.delete("/api/tokens/{token_val}")
+def revoke_api_token(token_val: str, current_user: dict = Depends(require_admin)):
+    success = database.delete_api_token(token_val, current_user["id"])
+    if not success:
+        raise HTTPException(status_code=404, detail="Token not found or unauthorized")
+    return {"success": True}
+
 # HTTP Proxy Implementation
 proxy_client = None
 
