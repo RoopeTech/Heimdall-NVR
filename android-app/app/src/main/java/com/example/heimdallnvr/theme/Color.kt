@@ -2,10 +2,17 @@ package com.example.heimdallnvr.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+val DarkSlate = Color(0xFF0F172A)
+val DarkSlateElevated = Color(0xFF1E293B)
+val NeonOrange = Color(0xFFFF7A00)
+val NeonOrangeLight = Color(0xFFFFA550)
+val OnDarkSlate = Color(0xFFF8FAFC)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Glassmorphism/Overlay colors
+val GlassDark = Color(0x99000000)
+val GlassLight = Color(0x33FFFFFF)
+val ScrimDark = Color(0xCC0F172A)
+
+// Status Colors
+val StatusLive = Color(0xFF10B981) // Emerald Green for Live dot
+val StatusError = Color(0xFFEF4444)
