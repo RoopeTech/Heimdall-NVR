@@ -49,12 +49,19 @@ class SettingsViewModel : ViewModel() {
             val auth = "Bearer $token"
             val api = NvrApi.create(serverUrl)
             try {
-                launch { _settings.value = api.getSettings(auth) }
-                launch { _cameras.value  = api.getCameras(auth)  }
-                launch { _groups.value   = api.getGroups(auth)   }
+                val s = kotlinx.coroutines.async { api.getSettings(auth) }
+                val c = kotlinx.coroutines.async { api.getCameras(auth) }
+                val g = kotlinx.coroutines.async { api.getGroups(auth) }
+                
+                _settings.value = s.await()
+                _cameras.value = c.await()
+                _groups.value = g.await()
+                
                 if (isAdmin) {
-                    launch { _users.value     = api.getUsers(auth)     }
-                    launch { _apiTokens.value = api.getApiTokens(auth) }
+                    val u = kotlinx.coroutines.async { api.getUsers(auth) }
+                    val t = kotlinx.coroutines.async { api.getApiTokens(auth) }
+                    _users.value = u.await()
+                    _apiTokens.value = t.await()
                 }
             } catch (e: Exception) {
                 _message.value = "Load error: ${e.message}"

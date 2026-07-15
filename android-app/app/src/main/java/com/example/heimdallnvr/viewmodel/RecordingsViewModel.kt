@@ -42,14 +42,11 @@ class RecordingsViewModel : ViewModel() {
             val dateStr = selectedDate.value.format(fmt)
             val camId = selectedCameraId.value
             try {
-                val rJobs = launch {
-                    _recordings.value = api.getRecordings(auth, camId, dateStr)
-                }
-                val eJobs = launch {
-                    try { _events.value = api.getEvents(auth, camId, dateStr) }
-                    catch (_: Exception) { _events.value = emptyList() }
-                }
-                rJobs.join(); eJobs.join()
+                val rJobs = kotlinx.coroutines.async { api.getRecordings(auth, camId, dateStr) }
+                val eJobs = kotlinx.coroutines.async { api.getEvents(auth, camId, dateStr) }
+                
+                _recordings.value = rJobs.await()
+                try { _events.value = eJobs.await() } catch (_: Exception) { _events.value = emptyList() }
             } catch (e: Exception) {
                 _error.value = "Failed to load recordings: ${e.message}"
             } finally {

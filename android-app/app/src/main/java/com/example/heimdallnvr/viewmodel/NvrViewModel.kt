@@ -38,13 +38,12 @@ class NvrViewModel(private val authRepo: AuthRepository) : ViewModel() {
             try {
                 val api = NvrApi.create(serverUrl)
                 val auth = "Bearer $token"
-                // Load cameras and groups in parallel
-                val camerasDeferred = launch { _cameras.value = api.getCameras(auth) }
-                val groupsDeferred  = launch {
-                    try { _groups.value = api.getGroups(auth) } catch (_: Exception) {}
-                }
-                camerasDeferred.join()
-                groupsDeferred.join()
+                // Load cameras and groups in parallel using async to properly catch exceptions
+                val camerasDeferred = kotlinx.coroutines.async { api.getCameras(auth) }
+                val groupsDeferred  = kotlinx.coroutines.async { api.getGroups(auth) }
+                
+                _cameras.value = camerasDeferred.await()
+                try { _groups.value = groupsDeferred.await() } catch (_: Exception) {}
             } catch (e: Exception) {
                 _error.value = "Failed to load cameras: ${e.message}"
             } finally {
