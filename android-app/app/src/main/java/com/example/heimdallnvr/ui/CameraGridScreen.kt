@@ -83,19 +83,13 @@ fun CameraCard(
             .clickable { onClick() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            val liveUrl = "$serverUrl/api/cameras/${camera.id}/live?token=$apiToken"
-            
-            MjpegWebView(
-                streamUrl = liveUrl,
-                modifier = Modifier.fillMaxSize(),
-                contentFit = "cover"
-            )
-            
-            // Transparent overlay to intercept clicks from WebView
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { onClick() }
+            LiveCameraFeed(
+                serverUrl = serverUrl,
+                cameraId = camera.id,
+                apiToken = apiToken,
+                pollIntervalMs = 2000L, // 2s for grid
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
             
             Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {

@@ -46,11 +46,13 @@ fun LiveViewScreen(
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
             ) {
-                val liveUrl = "$serverUrl/api/cameras/${camera.id}/live?token=$apiToken"
-                MjpegWebView(
-                    streamUrl = liveUrl,
-                    modifier = Modifier.fillMaxSize(),
-                    contentFit = "contain"
+                LiveCameraFeed(
+                    serverUrl = serverUrl,
+                    cameraId = camera.id,
+                    apiToken = apiToken,
+                    pollIntervalMs = 500L, // 0.5s for live view
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
