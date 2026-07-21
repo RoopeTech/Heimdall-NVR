@@ -1,0 +1,6 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+opencv-python-headless>=4.8.0.74
+requests>=2.31.0
+httpx>=0.24.0
+cryptography>=41.0.0
