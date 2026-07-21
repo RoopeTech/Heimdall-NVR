@@ -4,13 +4,13 @@ import httpx
 import database
 import io
 
-def send_motion_notification_async(camera_name, video_path, snapshot_bytes):
+def send_motion_notification_async(camera_name, video_path, snapshot_bytes, camera_id=None):
     """
     Spawns a background thread to send notifications.
     """
     thread = threading.Thread(
         target=_process_notifications,
-        args=(camera_name, video_path, snapshot_bytes),
+        args=(camera_name, video_path, snapshot_bytes, camera_id),
         daemon=True
     )
     thread.start()
@@ -41,7 +41,24 @@ def send_test_notification(discord_webhook, telegram_token, telegram_chat, notif
             
     threading.Thread(target=_run_test, daemon=True).start()
 
-def _process_notifications(camera_name, video_path, snapshot_bytes):
+def _process_notifications(camera_name, video_path, snapshot_bytes, camera_id=None):
+    webhook_cameras = database.get_system_setting("webhook_enabled_cameras") or "all"
+    if webhook_cameras.strip() and webhook_cameras.strip() != "all":
+        enabled_ids = [x.strip() for x in webhook_cameras.split(",") if x.strip()]
+        target_id = camera_id
+        if target_id is None:
+            try:
+                cams = database.get_cameras()
+                for c in cams:
+                    if c['name'] == camera_name:
+                        target_id = c['id']
+                        break
+            except Exception:
+                pass
+        if target_id is not None and str(target_id) not in enabled_ids:
+            print(f"[{camera_name}] Webhook alert skipped: camera ID {target_id} is not in webhook_enabled_cameras ({webhook_cameras})")
+            return
+
     discord_webhook = database.get_system_setting("discord_webhook_url")
     telegram_token = database.get_system_setting("telegram_bot_token")
     telegram_chat = database.get_system_setting("telegram_chat_id")

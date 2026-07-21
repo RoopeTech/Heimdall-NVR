@@ -703,7 +703,7 @@ class CameraThread(threading.Thread):
                 print(f"[{self.name}] Recording saved: {self.record_filepath} ({duration:.1f}s)")
                 
                 try:
-                    notifications.send_motion_notification_async(self.name, self.record_filepath, self.latest_hq_jpeg_bytes)
+                    notifications.send_motion_notification_async(self.name, self.record_filepath, self.latest_hq_jpeg_bytes, camera_id=self.camera_id)
                 except Exception as ne:
                     print(f"[{self.name}] Failed to send notification: {ne}")
             except Exception as e:

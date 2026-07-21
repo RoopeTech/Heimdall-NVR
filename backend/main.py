@@ -512,6 +512,7 @@ def get_system_settings(current_user: dict = Depends(get_current_user)):
         "telegram_chat_id": database.get_system_setting("telegram_chat_id") or "",
         "notification_service": database.get_system_setting("notification_service") or "both",
         "notification_media": database.get_system_setting("notification_media") or "both",
+        "webhook_enabled_cameras": database.get_system_setting("webhook_enabled_cameras") or "all",
         "git_remote_name": database.get_system_setting("git_remote_name") or "origin"
     }
 
@@ -538,6 +539,8 @@ def save_system_settings(data: dict, admin: dict = Depends(require_admin)):
         database.set_system_setting("notification_service", data["notification_service"])
     if "notification_media" in data:
         database.set_system_setting("notification_media", data["notification_media"])
+    if "webhook_enabled_cameras" in data:
+        database.set_system_setting("webhook_enabled_cameras", str(data["webhook_enabled_cameras"]))
     if "git_remote_name" in data:
         database.set_system_setting("git_remote_name", data["git_remote_name"])
         

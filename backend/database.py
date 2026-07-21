@@ -274,7 +274,8 @@ def init_db():
         ('telegram_bot_token', ''),
         ('telegram_chat_id', ''),
         ('notification_service', 'both'),
-        ('notification_media', 'both')
+        ('notification_media', 'both'),
+        ('webhook_enabled_cameras', 'all')
     ]
     for k, v in default_settings:
         cursor.execute("SELECT COUNT(*) FROM system_settings WHERE key = ?", (k,))

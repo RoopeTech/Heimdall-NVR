@@ -11,6 +11,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
   const [telegramChatId, setTelegramChatId] = useState('');
   const [notificationService, setNotificationService] = useState('both');
   const [notificationMedia, setNotificationMedia] = useState('both');
+  const [webhookEnabledCameras, setWebhookEnabledCameras] = useState('all');
   const [gitRemoteName, setGitRemoteName] = useState('origin');
 
   // SSO Settings State
@@ -405,6 +406,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           setTelegramChatId(data.telegram_chat_id || '');
           setNotificationService(data.notification_service || 'both');
           setNotificationMedia(data.notification_media || 'both');
+          setWebhookEnabledCameras(data.webhook_enabled_cameras || 'all');
           setGitRemoteName(data.git_remote_name || 'origin');
           setSsoEnabled(data.sso_enabled || '0');
           setSsoClientId(data.sso_client_id || '');
@@ -512,6 +514,7 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
           telegram_chat_id: telegramChatId,
           notification_service: notificationService,
           notification_media: notificationMedia,
+          webhook_enabled_cameras: webhookEnabledCameras,
           git_remote_name: gitRemoteName
         }),
       });
@@ -1338,6 +1341,57 @@ export default function Settings({ cameras, onReload, onReloadSettings, token, c
                 <option value="picture">Picture Only</option>
                 <option value="video">Video Clip Only</option>
               </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Alert Cameras (Webhooks)</label>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                Select which cameras will send webhook notifications when motion is detected.
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-light)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={webhookEnabledCameras === 'all' || webhookEnabledCameras === ''} 
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setWebhookEnabledCameras('all');
+                      } else {
+                        const allIds = (cameras || []).map(c => String(c.id)).join(',');
+                        setWebhookEnabledCameras(allIds);
+                      }
+                    }} 
+                  />
+                  All Cameras
+                </label>
+
+                {(webhookEnabledCameras !== 'all' && webhookEnabledCameras !== '') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginLeft: '20px', marginTop: '4px' }}>
+                    {(cameras || []).map((cam) => {
+                      const enabledList = webhookEnabledCameras ? webhookEnabledCameras.split(',').map(s => s.trim()) : [];
+                      const isChecked = enabledList.includes(String(cam.id));
+                      return (
+                        <label key={cam.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={isChecked} 
+                            onChange={(e) => {
+                              let updatedList;
+                              if (e.target.checked) {
+                                updatedList = [...enabledList, String(cam.id)];
+                              } else {
+                                updatedList = enabledList.filter(id => id !== String(cam.id));
+                              }
+                              setWebhookEnabledCameras(updatedList.length > 0 ? updatedList.join(',') : 'none');
+                            }} 
+                          />
+                          {cam.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
