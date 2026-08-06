@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Heimdall NVR",
+        "description": "Enter the URL and login credentials for your Heimdall NVR server.",
+        "data": {
+          "url": "Server URL",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to Heimdall NVR server. Please verify the URL.",
+      "invalid_auth": "Invalid username or password.",
+      "unknown": "Unexpected error occurred while connecting."
+    },
+    "abort": {
+      "already_configured": "This Heimdall NVR server is already configured."
+    }
+  }
+}

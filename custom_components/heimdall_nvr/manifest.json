@@ -1,0 +1,11 @@
+{
+  "domain": "heimdall_nvr",
+  "name": "Heimdall NVR",
+  "codeowners": ["@roopetech"],
+  "config_flow": true,
+  "documentation": "https://github.com/roopetech/RTNVR",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/roopetech/RTNVR/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
