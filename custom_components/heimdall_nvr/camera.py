@@ -95,6 +95,22 @@ class HeimdallCamera(Camera):
         """Return the URL for the MJPEG stream from Heimdall NVR."""
         return self.api.get_live_stream_url(self._cam_id)
 
+    async def stream_source(self) -> Optional[str]:
+        """Return the RTSP stream URL for Home Assistant stream engine & Google Cast."""
+        main_url = self._camera_data.get("main_url") or self._camera_data.get("sub_url")
+        user = self._camera_data.get("rtsp_user")
+        password = self._camera_data.get("rtsp_pass")
+
+        if not main_url:
+            return None
+
+        # Inject credentials into RTSP URL if separated in database
+        if user and password and main_url.startswith("rtsp://") and "@" not in main_url:
+            raw_host_path = main_url[7:]
+            main_url = f"rtsp://{user}:{password}@{raw_host_path}"
+
+        return main_url
+
     async def async_update(self) -> None:
         """Update camera metadata from NVR."""
         try:

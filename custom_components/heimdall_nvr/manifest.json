@@ -3,6 +3,7 @@
   "name": "Heimdall NVR",
   "codeowners": ["@roopetech"],
   "config_flow": true,
+  "dependencies": ["stream"],
   "documentation": "https://github.com/roopetech/RTNVR",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/roopetech/RTNVR/issues",
