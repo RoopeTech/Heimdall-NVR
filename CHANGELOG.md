@@ -2,7 +2,7 @@
 
 All notable changes to the NVR project will be documented in this file.
 
-## [1.3.1] - 2026-09-07
+## [1.3.2] - 2026-09-07
 
 ### Changed
 - **Home Assistant Custom Component**: Updated `custom_components/heimdall_nvr` to support the Home Assistant August 2026 Device Registry follow-up changes.
