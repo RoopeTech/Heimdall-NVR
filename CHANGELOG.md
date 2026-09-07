@@ -2,6 +2,13 @@
 
 All notable changes to the NVR project will be documented in this file.
 
+## [1.3.1] - 2026-09-07
+
+### Changed
+- **Home Assistant Custom Component**: Updated `custom_components/heimdall_nvr` to support the Home Assistant August 2026 Device Registry follow-up changes.
+- **Device Registry Modernization**: Migrated deprecated `via_device` tuple to `via_device_id` across camera and motion binary sensor platforms using `async_get_device_id_by_identifier`.
+- **Hub Device Registration**: Explicitly registered the Heimdall NVR server device in Home Assistant's device registry during integration startup.
+
 ## [1.3.0] - 2026-07-14
 
 ### Added

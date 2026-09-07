@@ -9,6 +9,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -31,7 +32,26 @@ async def async_setup_entry(
         _LOGGER.error("Failed to fetch cameras for motion sensors: %s", err)
         return
 
-    entities = [HeimdallMotionSensor(api, cam, entry.entry_id) for cam in raw_cameras]
+    server_device_id: Optional[str] = None
+    if hasattr(dr, "async_get_device_id_by_identifier"):
+        try:
+            server_device_id = dr.async_get_device_id_by_identifier(
+                hass, (DOMAIN, entry.entry_id), config_entry_id=entry.entry_id
+            )
+        except ValueError:
+            pass
+    if not server_device_id:
+        device_registry = dr.async_get(hass)
+        device_entry = device_registry.async_get_device(
+            identifiers={(DOMAIN, entry.entry_id)}
+        )
+        if device_entry:
+            server_device_id = device_entry.id
+
+    entities = [
+        HeimdallMotionSensor(api, cam, entry.entry_id, via_device_id=server_device_id)
+        for cam in raw_cameras
+    ]
     async_add_entities(entities, update_before_add=True)
 
 class HeimdallMotionSensor(BinarySensorEntity):
@@ -39,10 +59,17 @@ class HeimdallMotionSensor(BinarySensorEntity):
 
     _attr_device_class = BinarySensorDeviceClass.MOTION
 
-    def __init__(self, api: HeimdallApiClient, camera_data: Dict[str, Any], entry_id: str) -> None:
+    def __init__(
+        self,
+        api: HeimdallApiClient,
+        camera_data: Dict[str, Any],
+        entry_id: str,
+        via_device_id: Optional[str] = None,
+    ) -> None:
         """Initialize motion binary sensor."""
         self.api = api
         self._entry_id = entry_id
+        self._via_device_id = via_device_id
         self._cam_id: int = camera_data["id"]
         self._cam_name: str = camera_data.get("name", f"Camera {self._cam_id}")
         self._is_on: bool = False
@@ -53,12 +80,14 @@ class HeimdallMotionSensor(BinarySensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info matching camera."""
-        return DeviceInfo(
+        info = DeviceInfo(
             identifiers={(DOMAIN, f"{self._entry_id}_cam_{self._cam_id}")},
             name=self._cam_name,
             manufacturer="Heimdall NVR",
-            via_device=(DOMAIN, self._entry_id),
         )
+        if self._via_device_id:
+            info["via_device_id"] = self._via_device_id
+        return info
 
     @property
     def is_on(self) -> bool:
