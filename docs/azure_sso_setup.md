@@ -35,7 +35,7 @@ Azure AD requires explicit permission to read the user's basic profile.
 
 For a faster setup, you can import the Azure Federation Metadata XML directly from the NVR Settings > SSO page. This auto-fills the Client ID, Client Secret, Authorization URL, Token URL, and User Info URL. Enter the Federation Metadata XML URL (usually `https://login.microsoftonline.com/<YOUR_TENANT_ID>/federationmetadata/2007-06/federationmetadata.xml?appid=<YOUR_CLIENT_ID>`) and click **Import**.
 
-## Step 5: Enter the Settings into the NVR (Manual)
+## Step 6: Enter the Settings into the NVR (Manual)
 
 Log in to your NVR as `admin`, go to **Settings > SSO**, and enter the following values:
 
