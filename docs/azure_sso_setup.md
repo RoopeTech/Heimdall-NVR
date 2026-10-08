@@ -31,7 +31,12 @@ Azure AD requires explicit permission to read the user's basic profile.
 3. Check the box for `email` and `profile` and `openid` under OpenId permissions as well.
 4. *(Optional but recommended)* Click **Grant admin consent for [Your Organization]** to prevent users from seeing a permission prompt on their first login.
 
-## Step 5: Enter the Settings into the NVR
+## Step 5 (Alternative): Import Federation Metadata
+
+For a faster setup, you can import the Azure Federation Metadata XML directly from the NVR Settings > SSO page. This auto-fills the Client ID, Client Secret, Authorization URL, Token URL, and User Info URL. Enter the Federation Metadata XML URL (usually `https://login.microsoftonline.com/<YOUR_TENANT_ID>/federationmetadata/2007-06/federationmetadata.xml?appid=<YOUR_CLIENT_ID>`) and click **Import**.
+
+## Step 5: Enter the Settings into the NVR (Manual)
+
 Log in to your NVR as `admin`, go to **Settings > SSO**, and enter the following values:
 
 | Field | Value |

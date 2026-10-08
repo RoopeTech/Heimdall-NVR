@@ -27,7 +27,9 @@ missing_deps=()
 if ! check_cmd python3; then missing_deps+=("python3" "python3-pip" "python3-venv"); fi
 if ! check_cmd node; then missing_deps+=("nodejs"); fi
 if ! check_cmd npm; then missing_deps+=("npm"); fi
-if ! check_cmd ffmpeg; then missing_deps+=("ffmpeg"); fi
+# Note: FFmpeg is auto-installed by bootstrap.py on first launch;
+# the check below is kept as a convenience hint but is not required.
+# if ! check_cmd ffmpeg; then missing_deps+=("ffmpeg"); fi
 
 if [ ${#missing_deps[@]} -ne 0 ]; then
     echo -e "${YELLOW}[!] Some system dependencies are missing: ${missing_deps[*]}${NC}"

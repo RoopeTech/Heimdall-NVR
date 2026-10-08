@@ -4,7 +4,7 @@ Heimdall NVR utilizes OpenCV to analyze camera streams and detect motion in real
 
 ## How Motion Detection Works
 
-To maximize CPU efficiency, Heimdall NVR employs a lightweight analysis pipeline rather than a heavy AI neural network. 
+To maximize CPU efficiency, Heimdall NVR employs a lightweight OpenCV motion analysis pipeline. An AI-based object detection feature (YOLOv8 + MOG2) is planned — see `improvements.md` for the implementation roadmap. 
 
 1. **Downscaling:** The live stream (specifically the secondary `sub_url` stream) is captured and resized down to a 320x240 frame. This provides enough pixel density to catch motion without bogging down the server.
 2. **Grayscale & Blurring:** The frame is converted to black and white, and a heavy Gaussian blur is applied to smooth out tiny noise or static artifacts from the camera sensor.

@@ -20,6 +20,9 @@ nvr.log
 recordings/
 backend/recordings/
 
+# Static binaries (downloaded by bootstrap.py)
+backend/bin/
+
 # IDE files
 .vscode/
 .idea/

@@ -189,8 +189,14 @@ try {
     $Shortcut = $WshShell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = $LauncherPath
     $Shortcut.WorkingDirectory = $ProjectRoot
-    # Use shell32.dll index 219 (video camera symbol) as icon
-    $Shortcut.IconLocation = "shell32.dll, 219"
+    # Use app icon if available, otherwise shell32.dll icon
+    $AppIconPath = Join-Path $ProjectRoot "frontend\public\icon-192.png"
+    if (Test-Path $AppIconPath) {
+        # Copy app icon to project root for use in shortcut
+        $Shortcut.IconLocation = $AppIconPath
+    } else {
+        $Shortcut.IconLocation = "shell32.dll, 219"
+    }
     $Shortcut.Description = "Launch Heimdall NVR Camera Dashboard"
     $Shortcut.Save()
     Write-Host "[+] Desktop shortcut created successfully!" -ForegroundColor Green
